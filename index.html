@@ -137,18 +137,32 @@
 
         // --- LIVE DATA LISTENERS ---
         function startApp() {
-            db.collection("squadre").orderBy("punti", "desc").onSnapshot(snap => {
-                const list = document.getElementById('classifica-list');
-                list.innerHTML = "";
-                snap.forEach(doc => {
-                    const s = doc.data();
-                    list.innerHTML += `
-                        <div class="bg-white p-5 rounded-[2rem] flex justify-between items-center shadow-sm border-l-8 border-${s.colore}-500 card-anim">
-                            <span class="font-bold text-gray-700 text-lg uppercase tracking-tighter">${s.nome}</span>
-                            <span class="text-3xl font-black text-gray-900">${s.punti}</span>
-                        </div>`;
-                });
-            });
+           db.collection("squadre").orderBy("punti", "desc").onSnapshot(snap => {
+    const list = document.getElementById('classifica-list');
+    list.innerHTML = "";
+
+    // Definiamo i colori che Tailwind deve caricare
+    const colorClasses = {
+        'blue': 'bg-blue-500',
+        'red': 'bg-red-500',
+        'green': 'bg-green-500',
+        'yellow': 'bg-yellow-500',
+        'purple': 'bg-purple-500'
+        // Aggiungi qui gli altri colori che usi nel database
+    };
+
+    snap.forEach(doc => {
+        const s = doc.data();
+        // Se il colore non è in lista, usa un grigio di default
+        const bgColor = colorClasses[s.colore] || 'bg-gray-500';
+
+        list.innerHTML += `
+            <div class="${bgColor} p-5 rounded-[2rem] flex justify-between items-center shadow-md card-anim mb-4">
+                <span class="font-bold text-white text-lg uppercase tracking-tighter">${s.nome}</span>
+                <span class="text-3xl font-black text-white">${s.punti}</span>
+            </div>`;
+    });
+});
 
             db.collection("registro").orderBy("data", "desc").limit(12).onSnapshot(snap => {
                 const list = document.getElementById('registro-list');
