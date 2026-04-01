@@ -191,7 +191,7 @@
                         rHtml += `
                         <div class="flex justify-between items-center p-3 bg-gray-50 rounded-xl mb-2 border border-gray-100">
                             <span class="text-sm font-bold text-gray-700">${rg.nome}</span>
-                            <button onclick="flussoPunti('${sqId}', '${rg.nome}')" class="bg-white border-2 border-gray-100 px-3 py-1 rounded-lg text-[10px] font-black text-indigo-600 shadow-sm uppercase active:scale-90 transition-transform">Punti</button>
+                            <button onclick="flussoPunti('${sqId}', '${rg.nome}')" class="bg-white border-2 border-gray-100 px-3 py-1 rounded-lg text-[10px] font-black text-indigo-600 shadow-sm uppercase active:scale-90 transition-transform">BONUS-MALUS</button>
                         </div>`;
                     }
                 });
@@ -200,7 +200,7 @@
                 <div class="card-squadra bg-white p-5 rounded-[2.5rem] shadow-sm border border-gray-100 mb-6" data-search="${sq.nome.toLowerCase()}">
                     <div class="flex justify-between items-center mb-4 border-b border-gray-50 pb-3">
                         <h3 class="font-black text-xl text-gray-800 uppercase tracking-tighter">${sq.nome}</h3>
-                        <button onclick="flussoPunti('${sqId}', '${sq.nome}')" class="text-[9px] bg-indigo-600 text-white px-4 py-2 rounded-full font-black uppercase tracking-widest shadow-md">Full Team</button>
+                        <button onclick="flussoPunti('${sqId}', '${sq.nome}')" class="text-[9px] bg-indigo-600 text-white px-4 py-2 rounded-full font-black uppercase tracking-widest shadow-md">ASSEGNA A SQUADRA</button>
                     </div>
                     ${rHtml || '<p class="text-[10px] text-gray-300 italic">Nessun ragazzo trovato.</p>'}
                 </div>`;
@@ -230,7 +230,7 @@
                             <span class="text-sm font-bold text-gray-700">${r.nome}</span>
                             <span class="text-[9px] font-black text-gray-300 uppercase">${r.Idsquadra}</span>
                         </div>
-                        <button onclick="flussoPunti('${r.Idsquadra}', '${r.nome}')" class="bg-white border-2 border-gray-100 px-3 py-1 rounded-lg text-[10px] font-black text-indigo-600 shadow-sm uppercase active:scale-90 transition-transform">Modifica</button>
+                        <button onclick="flussoPunti('${r.Idsquadra}', '${r.nome}')" class="bg-white border-2 border-gray-100 px-3 py-1 rounded-lg text-[10px] font-black text-indigo-600 shadow-sm uppercase active:scale-90 transition-transform">BONUS-MALUS</button>
                     </div>`;
                 });
 
