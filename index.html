@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>App Campo 2026 - Pro Edition</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; }
+        .tab-active { border-bottom: 4px solid #6366f1; color: #6366f1; font-weight: 900; }
+        .card-anim { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .glass-header { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); }
+    </style>
+</head>
+<body class="pb-24">
+
+    <div id="login-overlay" class="fixed inset-0 bg-indigo-950 z-[100] flex items-center justify-center p-6 hidden">
+        <div class="bg-white rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl text-center card-anim">
+            <h2 class="text-3xl font-black mb-2 text-indigo-600">BENVENUTO 👋</h2>
+            <p class="text-gray-400 mb-8 font-bold text-xs uppercase tracking-widest">Seleziona il tuo profilo Padrino</p>
+            <select id="select-padrino" class="w-full p-4 bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-2xl mb-8 outline-none transition-all font-bold text-gray-700">
+                <option value="">Caricamento...</option>
+            </select>
+            <button onclick="login()" class="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl shadow-lg hover:bg-indigo-700 active:scale-95 transition-all uppercase tracking-widest">Entra nell'App</button>
+        </div>
+    </div>
+
+    <header class="glass-header px-6 py-4 shadow-sm flex justify-between items-center sticky top-0 z-40">
+        <div>
+            <h1 class="font-black text-2xl tracking-tighter text-gray-900 leading-none">CAMP <span class="text-indigo-600">2026</span></h1>
+            <p id="user-display" class="text-[10px] text-gray-400 font-black uppercase mt-1 tracking-widest"></p>
+        </div>
+        <button onclick="logout()" class="p-2 text-gray-300 hover:text-red-500 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+        </button>
+    </header>
+
+    <nav class="flex bg-white mx-4 mt-6 rounded-2xl shadow-sm p-1 border border-gray-100 sticky top-20 z-30">
+        <button onclick="showTab('classifica')" id="btn-classifica" class="flex-1 py-3 text-xs tab-active uppercase tracking-tighter">Classifica</button>
+        <button onclick="showTab('squadre')" id="btn-squadre" class="flex-1 py-3 text-xs text-gray-400 uppercase tracking-tighter">Squadre</button>
+        <button onclick="showTab('camere')" id="btn-camere" class="flex-1 py-3 text-xs text-gray-400 uppercase tracking-tighter">Camere</button>
+    </nav>
+
+    <main class="max-w-md mx-auto p-4 mt-2">
+        
+        <section id="tab-classifica" class="tab-content space-y-4">
+            <div id="classifica-list" class="space-y-3"></div>
+            <div class="mt-8">
+                <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 ml-2">Registro Attività Live</h3>
+                <div id="registro-list" class="space-y-3"></div>
+            </div>
+        </section>
+
+        <section id="tab-squadre" class="tab-content hidden">
+            <div class="px-1 mb-6">
+                <input type="text" id="search-squadra" oninput="filtraElementi('card-squadra', this.value)" 
+                    placeholder="🔍 Cerca squadra o ragazzo..." 
+                    class="w-full p-4 rounded-2xl border-none shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium">
+            </div>
+            <div id="squadre-list" class="space-y-6"></div>
+        </section>
+
+        <section id="tab-camere" class="tab-content hidden">
+            <div class="px-1 mb-6">
+                <input type="number" id="search-camera" oninput="filtraElementi('card-camera', this.value)" 
+                    placeholder="🔍 Inserisci n° camera (es. 201)..." 
+                    class="w-full p-4 rounded-2xl border-none shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium">
+            </div>
+            <div id="camere-list" class="space-y-6"></div>
+        </section>
+
+    </main>
+
+    <script>
+        // CONFIGURAZIONE FIREBASE (Usa i tuoi dati corretti)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDYnV7Qqj_-iPLvE-KYXT1bCRbe_4seFaw",
+            authDomain: "campopostcresima2026.firebaseapp.com",
+            projectId: "campopostcresima2026",
+            storageBucket: "campopostcresima2026.firebasestorage.app",
+            messagingSenderId: "286625257910",
+            appId: "1:286625257910:web:734565f023794171e08917"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        let CURRENT_USER = localStorage.getItem('padrino');
+
+        // --- AUTH & INITIALIZATION ---
+        async function initLogin() {
+            if (!CURRENT_USER) {
+                document.getElementById('login-overlay').classList.remove('hidden');
+                const snap = await db.collection("padrini").get();
+                const select = document.getElementById('select-padrino');
+                select.innerHTML = '<option value="">-- Chi sei? --</option>';
+                snap.forEach(doc => select.innerHTML += `<option value="${doc.data().nome}">${doc.data().nome}</option>`);
+            } else {
+                document.getElementById('user-display').innerText = `Padrino: ${CURRENT_USER}`;
+                startApp();
+            }
+        }
+
+        function login() {
+            const val = document.getElementById('select-padrino').value;
+            if(val) { localStorage.setItem('padrino', val); location.reload(); }
+        }
+
+        function logout() { localStorage.removeItem('padrino'); location.reload(); }
+
+        // --- NAVIGATION ---
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+            document.getElementById('tab-' + tabName).classList.remove('hidden');
+            document.querySelectorAll('nav button').forEach(b => b.classList.remove('tab-active', 'text-gray-400'));
+            document.getElementById('btn-' + tabName).classList.add('tab-active');
+            if(tabName === 'squadre') renderSquadre();
+            if(tabName === 'camere') renderCamere();
+        }
+
+        // --- LIVE DATA LISTENERS ---
+        function startApp() {
+            db.collection("squadre").orderBy("punti", "desc").onSnapshot(snap => {
+                const list = document.getElementById('classifica-list');
+                list.innerHTML = "";
+                snap.forEach(doc => {
+                    const s = doc.data();
+                    list.innerHTML += `
+                        <div class="bg-white p-5 rounded-[2rem] flex justify-between items-center shadow-sm border-l-8 border-${s.colore}-500 card-anim">
+                            <span class="font-bold text-gray-700 text-lg uppercase tracking-tighter">${s.nome}</span>
+                            <span class="text-3xl font-black text-gray-900">${s.punti}</span>
+                        </div>`;
+                });
+            });
+
+            db.collection("registro").orderBy("data", "desc").limit(12).onSnapshot(snap => {
+                const list = document.getElementById('registro-list');
+                list.innerHTML = "";
+                snap.forEach(doc => {
+                    const l = doc.data();
+                    const badgeColor = l.punti > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700';
+                    list.innerHTML += `
+                        <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-50 flex items-center justify-between card-anim">
+                            <div class="flex flex-col">
+                                <span class="text-[9px] font-black text-gray-300 uppercase tracking-widest leading-none mb-1">${l.padrino}</span>
+                                <span class="font-bold text-gray-800 text-sm italic">A: ${l.bersaglio}</span>
+                                <span class="text-[10px] text-gray-400 font-medium mt-1 uppercase">"${l.causale}"</span>
+                            </div>
+                            <span class="${badgeColor} px-3 py-1.5 rounded-xl font-black text-xs">${l.punti > 0 ? '+' : ''}${l.punti}</span>
+                        </div>`;
+                });
+            });
+        }
+
+        // --- RENDERING FUNCTIONS ---
+        async function renderSquadre() {
+            const container = document.getElementById('squadre-list');
+            container.innerHTML = "<p class='text-center animate-pulse p-10 text-gray-400'>Analisi squadre...</p>";
+            
+            const sqSnap = await db.collection("squadre").get();
+            const rgSnap = await db.collection("ragazzi").get();
+            container.innerHTML = "";
+
+            sqSnap.forEach(sqDoc => {
+                const sq = sqDoc.data();
+                const sqId = sqDoc.id;
+                let rHtml = "";
+                let count = 0;
+
+                rgSnap.forEach(rgDoc => {
+                    const rg = rgDoc.data();
+                    if(rg.Idsquadra && String(rg.Idsquadra).trim() === String(sqId).trim()) {
+                        count++;
+                        rHtml += `
+                        <div class="flex justify-between items-center p-3 bg-gray-50 rounded-xl mb-2 border border-gray-100">
+                            <span class="text-sm font-bold text-gray-700">${rg.nome}</span>
+                            <button onclick="flussoPunti('${sqId}', '${rg.nome}')" class="bg-white border-2 border-gray-100 px-3 py-1 rounded-lg text-[10px] font-black text-indigo-600 shadow-sm uppercase active:scale-90 transition-transform">Punti</button>
+                        </div>`;
+                    }
+                });
+
+                container.innerHTML += `
+                <div class="card-squadra bg-white p-5 rounded-[2.5rem] shadow-sm border border-gray-100 mb-6" data-search="${sq.nome.toLowerCase()}">
+                    <div class="flex justify-between items-center mb-4 border-b border-gray-50 pb-3">
+                        <h3 class="font-black text-xl text-gray-800 uppercase tracking-tighter">${sq.nome}</h3>
+                        <button onclick="flussoPunti('${sqId}', '${sq.nome}')" class="text-[9px] bg-indigo-600 text-white px-4 py-2 rounded-full font-black uppercase tracking-widest shadow-md">Full Team</button>
+                    </div>
+                    ${rHtml || '<p class="text-[10px] text-gray-300 italic">Nessun ragazzo trovato.</p>'}
+                </div>`;
+            });
+        }
+
+        async function renderCamere() {
+            const container = document.getElementById('camere-list');
+            container.innerHTML = "<p class='text-center animate-pulse p-10 text-gray-400'>Ispezione corridoi...</p>";
+            
+            const rgSnap = await db.collection("ragazzi").get();
+            container.innerHTML = "";
+            const camere = {};
+
+            rgSnap.forEach(doc => {
+                const r = doc.data();
+                if(!camere[r.camera]) camere[r.camera] = [];
+                camere[r.camera].push({ id: doc.id, ...r });
+            });
+
+            Object.keys(camere).sort((a, b) => a - b).forEach(num => {
+                let rHtml = "";
+                camere[num].forEach(r => {
+                    rHtml += `
+                    <div class="flex justify-between items-center p-3 bg-gray-50 rounded-xl mb-2 border border-gray-100">
+                        <div class="flex flex-col">
+                            <span class="text-sm font-bold text-gray-700">${r.nome}</span>
+                            <span class="text-[9px] font-black text-gray-300 uppercase">${r.Idsquadra}</span>
+                        </div>
+                        <button onclick="flussoPunti('${r.Idsquadra}', '${r.nome}')" class="bg-white border-2 border-gray-100 px-3 py-1 rounded-lg text-[10px] font-black text-indigo-600 shadow-sm uppercase active:scale-90 transition-transform">Modifica</button>
+                    </div>`;
+                });
+
+                container.innerHTML += `
+                <div class="card-camera bg-white p-5 rounded-[2.5rem] shadow-sm border border-gray-100 mb-6" data-search="${num}">
+                    <div class="flex justify-between items-center mb-4 border-b border-gray-50 pb-3">
+                        <h3 class="font-black text-lg text-gray-800 tracking-tighter">CAMERA ${num}</h3>
+                        <button onclick="flussoPuntiCamera(${num})" class="bg-indigo-600 text-white text-[9px] font-black px-4 py-2 rounded-full uppercase tracking-widest shadow-md">Punti Camera</button>
+                    </div>
+                    ${rHtml}
+                </div>`;
+            });
+        }
+
+        // --- CORE LOGIC: POINT FLOW ---
+        async function flussoPunti(idSquadra, nomeBersaglio) {
+            const { value: tipo } = await Swal.fire({
+                title: 'Azione per ' + nomeBersaglio,
+                text: 'Che tipo di punteggio vuoi assegnare?',
+                showDenyButton: true,
+                confirmButtonText: '⭐ BONUS',
+                denyButtonText: '🚨 MALUS',
+                confirmButtonColor: '#10b981',
+                denyButtonColor: '#ef4444',
+                customClass: { popup: 'rounded-[2rem]' }
+            });
+
+            if (tipo === undefined) return;
+
+            const { value: q } = await Swal.fire({
+                title: 'Punteggio',
+                input: 'number',
+                inputPlaceholder: 'Inserisci il valore numerico',
+                showCancelButton: true
+            });
+
+            if (!q) return;
+
+            const { value: m } = await Swal.fire({
+                title: 'Motivazione',
+                input: 'text',
+                inputPlaceholder: 'Es: Pulizia, Silenzio, Vittoria gioco...',
+                showCancelButton: true
+            });
+
+            if (m === undefined) return;
+
+            const finale = tipo ? Number(q) : -Math.abs(Number(q));
+            eseguiAggiornamento(idSquadra, nomeBersaglio, finale, m || "Nessun motivo");
+        }
+
+        async function flussoPuntiCamera(numCamera) {
+            const { value: tipo } = await Swal.fire({
+                title: `Camera ${numCamera}`,
+                text: "Il punteggio verrà dato a TUTTI i componenti",
+                showDenyButton: true,
+                confirmButtonText: '⭐ BONUS',
+                denyButtonText: '🚨 MALUS',
+                confirmButtonColor: '#10b981',
+                denyButtonColor: '#ef4444'
+            });
+
+            if (tipo === undefined) return;
+            const { value: q } = await Swal.fire({ title: 'Quanti punti?', input: 'number' });
+            if (!q) return;
+            const { value: m } = await Swal.fire({ title: 'Motivo', input: 'text' });
+            if (m === undefined) return;
+
+            const val = tipo ? Number(q) : -Math.abs(Number(q));
+            const snap = await db.collection("ragazzi").where("camera", "==", Number(numCamera)).get();
+            
+            snap.forEach(doc => {
+                const r = doc.data();
+                eseguiAggiornamento(r.Idsquadra, `Cam ${numCamera} (${r.nome})`, val, m || `Ispezione Camera ${numCamera}`);
+            });
+        }
+
+        async function eseguiAggiornamento(idSquadra, bersaglio, punti, motivo) {
+            const ref = db.collection("squadre").doc(idSquadra);
+            
+            try {
+                await ref.update({ punti: firebase.firestore.FieldValue.increment(punti) });
+                await db.collection("registro").add({
+                    padrino: CURRENT_USER,
+                    bersaglio: bersaglio,
+                    punti: punti,
+                    causale: motivo,
+                    data: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                if (punti > 0) {
+                    confetti({ particleCount: 150, spread: 70, origin: { y: 0.7 } });
+                    Swal.fire({
+                        title: 'Confermato! ⭐',
+                        html: `Hai aggiunto <b>${punti} punti</b> a <b>${bersaglio}</b>.<br><small>${motivo}</small>`,
+                        icon: 'success'
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Registrato 🚨',
+                        html: `Hai sottratto <b>${Math.abs(punti)} punti</b> a <b>${bersaglio}</b>.<br><small>${motivo}</small>`,
+                        icon: 'warning'
+                    });
+                }
+            } catch (e) {
+                Swal.fire('Errore!', 'ID Squadra "' + idSquadra + '" non trovato nel DB.', 'error');
+            }
+        }
+
+        // --- UTILS ---
+        function filtraElementi(classe, query) {
+            const cards = document.getElementsByClassName(classe);
+            const filter = query.toLowerCase();
+            for (let card of cards) {
+                const text = card.getAttribute('data-search');
+                card.style.display = text.includes(filter) ? "block" : "none";
+            }
+        }
+
+        initLogin();
+    </script>
+</body>
+</html>
