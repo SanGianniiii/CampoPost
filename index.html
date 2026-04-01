@@ -19,25 +19,19 @@
         .card-anim { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .glass-header { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); }
+        .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .sticky-col { position: sticky; left: 0; background: white; min-width: 120px; text-align: left; z-index: 10; border-right: 2px solid #f1f5f9; }
+        th, td { min-width: 85px; text-align: center; }
     </style>
-    <link rel="manifest" href="manifest.json">
-
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Camp2026">
-
-<link rel="apple-touch-icon" href="icona-192.png">
 </head>
 <body class="pb-24">
 
     <div id="login-overlay" class="fixed inset-0 bg-indigo-950 z-[100] flex items-center justify-center p-6 hidden">
         <div class="bg-white rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl text-center card-anim">
             <h2 class="text-3xl font-black mb-2 text-indigo-600">BENVENUTO 👋</h2>
-            <p class="text-gray-400 mb-8 font-bold text-xs uppercase tracking-widest">Seleziona il tuo profilo Padrino</p>
-            <select id="select-padrino" class="w-full p-4 bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-2xl mb-8 outline-none transition-all font-bold text-gray-700">
-                <option value="">Caricamento...</option>
-            </select>
-            <button onclick="login()" class="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl shadow-lg hover:bg-indigo-700 active:scale-95 transition-all uppercase tracking-widest">Entra nell'App</button>
+            <p class="text-gray-400 mb-8 font-bold text-xs uppercase tracking-widest">Seleziona il tuo profilo</p>
+            <select id="select-padrino" class="w-full p-4 bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-2xl mb-8 outline-none font-bold text-gray-700"></select>
+            <button onclick="login()" class="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl shadow-lg uppercase tracking-widest">Entra</button>
         </div>
     </div>
 
@@ -46,22 +40,20 @@
             <h1 class="font-black text-2xl tracking-tighter text-gray-900 leading-none">CAMPO POST <span class="text-indigo-600">2026</span></h1>
             <p id="user-display" class="text-[10px] text-gray-400 font-black uppercase mt-1 tracking-widest"></p>
         </div>
-        <button onclick="logout()" class="p-2 text-gray-300 hover:text-red-500 transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
+        <button onclick="logout()" class="text-gray-300 hover:text-red-500 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
         </button>
     </header>
 
     <nav class="flex bg-white mx-4 mt-6 rounded-2xl shadow-sm p-1 border border-gray-100 sticky top-20 z-30">
-        <button onclick="showTab('classifica')" id="btn-classifica" class="flex-1 py-3 text-xs tab-active uppercase tracking-tighter">Classifica</button>
-        <button onclick="showTab('squadre')" id="btn-squadre" class="flex-1 py-3 text-xs text-gray-400 uppercase tracking-tighter">Squadre</button>
-        <button onclick="showTab('camere')" id="btn-camere" class="flex-1 py-3 text-xs text-gray-400 uppercase tracking-tighter">Camere</button>
+        <button onclick="showTab('classifica')" id="btn-classifica" class="flex-1 py-3 text-[10px] tab-active uppercase tracking-tighter">Classifica</button>
+        <button onclick="showTab('tabellone')" id="btn-tabellone" class="flex-1 py-3 text-[10px] text-gray-400 uppercase tracking-tighter">Tabellone</button>
+        <button onclick="showTab('squadre')" id="btn-squadre" class="flex-1 py-3 text-[10px] text-gray-400 uppercase tracking-tighter">Squadre</button>
+        <button onclick="showTab('camere')" id="btn-camere" class="flex-1 py-3 text-[10px] text-gray-400 uppercase tracking-tighter">Camere</button>
     </nav>
 
-    <main class="max-w-md mx-auto p-4 mt-2">
-        
-        <section id="tab-classifica" class="tab-content space-y-4">
+    <main class="p-4 mt-2">
+        <section id="tab-classifica" class="tab-content max-w-md mx-auto">
             <div id="classifica-list" class="space-y-3"></div>
             <div class="mt-8">
                 <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 ml-2">Registro Attività Live</h3>
@@ -69,28 +61,37 @@
             </div>
         </section>
 
-        <section id="tab-squadre" class="tab-content hidden">
-            <div class="px-1 mb-6">
-                <input type="text" id="search-squadra" oninput="filtraElementi('card-squadra', this.value)" 
-                    placeholder="🔍 Cerca squadra o ragazzo..." 
-                    class="w-full p-4 rounded-2xl border-none shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium">
+        <section id="tab-tabellone" class="tab-content hidden">
+            <div class="mb-4 flex flex-col items-center">
+                <button onclick="cambiaGiorno()" id="label-giorno" class="bg-indigo-600 text-white px-6 py-2 rounded-full font-black text-[10px] uppercase tracking-widest shadow-lg transition-all"></button>
             </div>
+            <div class="bg-white rounded-[2rem] shadow-sm p-4 table-container border border-gray-100">
+                <table class="w-full text-[11px] border-collapse">
+                    <thead>
+                        <tr class="text-gray-400 font-black uppercase tracking-widest border-b">
+                            <th class="p-3 sticky-col">Squadre</th>
+                            <th class="p-3">G1</th><th class="p-3">I1</th><th class="p-3">G2</th><th class="p-3">G3</th>
+                            <th class="p-3">G4</th><th class="p-3">I2</th><th class="p-3">G5</th><th class="p-3">G6</th>
+                            <th class="p-3">G7</th><th class="p-3">I3</th><th class="p-3">CACCIA</th><th class="p-3 text-indigo-600">B/M</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabellone-body"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="tab-squadre" class="tab-content hidden max-w-md mx-auto">
+            <input type="text" id="search-squadra" oninput="filtraElementi('card-squadra', this.value)" placeholder="🔍 Cerca squadra o ragazzo..." class="w-full p-4 rounded-2xl shadow-sm mb-6 outline-none text-sm font-medium">
             <div id="squadre-list" class="space-y-6"></div>
         </section>
 
-        <section id="tab-camere" class="tab-content hidden">
-            <div class="px-1 mb-6">
-                <input type="number" id="search-camera" oninput="filtraElementi('card-camera', this.value)" 
-                    placeholder="🔍 Inserisci n° camera (es. 201)..." 
-                    class="w-full p-4 rounded-2xl border-none shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium">
-            </div>
+        <section id="tab-camere" class="tab-content hidden max-w-md mx-auto">
+            <input type="number" id="search-camera" oninput="filtraElementi('card-camera', this.value)" placeholder="🔍 Numero camera..." class="w-full p-4 rounded-2xl shadow-sm mb-6 outline-none text-sm font-medium">
             <div id="camere-list" class="space-y-6"></div>
         </section>
-
     </main>
 
     <script>
-        // CONFIGURAZIONE FIREBASE (Usa i tuoi dati corretti)
         const firebaseConfig = {
             apiKey: "AIzaSyDYnV7Qqj_-iPLvE-KYXT1bCRbe_4seFaw",
             authDomain: "campopostcresima2026.firebaseapp.com",
@@ -99,12 +100,12 @@
             messagingSenderId: "286625257910",
             appId: "1:286625257910:web:734565f023794171e08917"
         };
-
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        
         let CURRENT_USER = localStorage.getItem('padrino');
+        let giornoAttuale = parseInt(localStorage.getItem('giorno_ispezione')) || 1;
 
-        // --- AUTH & INITIALIZATION ---
         async function initLogin() {
             if (!CURRENT_USER) {
                 document.getElementById('login-overlay').classList.remove('hidden');
@@ -117,15 +118,9 @@
                 startApp();
             }
         }
-
-        function login() {
-            const val = document.getElementById('select-padrino').value;
-            if(val) { localStorage.setItem('padrino', val); location.reload(); }
-        }
-
+        function login() { const val = document.getElementById('select-padrino').value; if(val) { localStorage.setItem('padrino', val); location.reload(); } }
         function logout() { localStorage.removeItem('padrino'); location.reload(); }
 
-        // --- NAVIGATION ---
         function showTab(tabName) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
             document.getElementById('tab-' + tabName).classList.remove('hidden');
@@ -133,267 +128,223 @@
             document.getElementById('btn-' + tabName).classList.add('tab-active');
             if(tabName === 'squadre') renderSquadre();
             if(tabName === 'camere') renderCamere();
+            if(tabName === 'tabellone') renderTabellone();
         }
 
-        // --- LIVE DATA LISTENERS ---
         function startApp() {
-           db.collection("squadre").orderBy("punti", "desc").onSnapshot(snap => {
-    const list = document.getElementById('classifica-list');
-    list.innerHTML = "";
+            db.collection("squadre").orderBy("punti", "desc").onSnapshot(snap => {
+                const list = document.getElementById('classifica-list');
+                list.innerHTML = "";
+                const colorClasses = { 'blue': 'bg-blue-500', 'red': 'bg-red-500', 'green': 'bg-green-500', 'yellow': 'bg-yellow-500', 'purple': 'bg-purple-500', 'arcobaleno': 'bg-gradient-to-r from-red-500 via-yellow-400 via-green-500 via-blue-500 to-purple-600' };
+                snap.forEach(doc => {
+                    const s = doc.data();
+                    list.innerHTML += `<div class="${colorClasses[s.colore] || 'bg-gray-500'} p-5 rounded-[2rem] flex justify-between items-center shadow-md card-anim"><span class="font-bold text-white uppercase tracking-tighter">${s.nome}</span><span class="text-3xl font-black text-white">${s.punti}</span></div>`;
+                });
+            });
 
-    // Definiamo i colori che Tailwind deve caricare
-    const colorClasses = {
-        'blue': 'bg-blue-500',
-        'red': 'bg-red-500',
-        'green': 'bg-green-500',
-        'yellow': 'bg-yellow-500',
-        'purple': 'bg-purple-500'
-        // Aggiungi qui gli altri colori che usi nel database
-    };
-
-    snap.forEach(doc => {
-        const s = doc.data();
-        // Se il colore non è in lista, usa un grigio di default
-        const bgColor = colorClasses[s.colore] || 'bg-gray-500';
-
-        list.innerHTML += `
-            <div class="${bgColor} p-5 rounded-[2rem] flex justify-between items-center shadow-md card-anim mb-4">
-                <span class="font-bold text-white text-lg uppercase tracking-tighter">${s.nome}</span>
-                <span class="text-3xl font-black text-white">${s.punti}</span>
-            </div>`;
-    });
-});
-
-            db.collection("registro").orderBy("data", "desc").limit(12).onSnapshot(snap => {
+            db.collection("registro").orderBy("data", "desc").limit(10).onSnapshot(snap => {
                 const list = document.getElementById('registro-list');
                 list.innerHTML = "";
                 snap.forEach(doc => {
                     const l = doc.data();
-                    const badgeColor = l.punti > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700';
-                    list.innerHTML += `
-                        <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-50 flex items-center justify-between card-anim">
-                            <div class="flex flex-col">
-                                <span class="text-[9px] font-black text-gray-300 uppercase tracking-widest leading-none mb-1">${l.padrino}</span>
-                                <span class="font-bold text-gray-800 text-sm italic">A: ${l.bersaglio}</span>
-                                <span class="text-[10px] text-gray-400 font-medium mt-1 uppercase">"${l.causale}"</span>
-                            </div>
-                            <span class="${badgeColor} px-3 py-1.5 rounded-xl font-black text-xs">${l.punti > 0 ? '+' : ''}${l.punti}</span>
-                        </div>`;
+                    list.innerHTML += `<div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-50 flex items-center justify-between card-anim"><div><span class="text-[9px] font-black text-gray-300 uppercase tracking-widest">${l.padrino}</span><br><span class="font-bold text-gray-800 text-sm italic">${l.bersaglio}</span><br><span class="text-[10px] text-gray-400 uppercase">${l.causale}</span></div><span class="${l.punti > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'} px-3 py-1.5 rounded-xl font-black text-xs">${l.punti > 0 ? '+' : ''}${l.punti}</span></div>`;
                 });
             });
         }
 
-        // --- RENDERING FUNCTIONS ---
-    async function renderSquadre() {
-    const container = document.getElementById('squadre-list');
-    container.innerHTML = "<p class='text-center animate-pulse p-10 text-gray-400'>Caricamento squadre...</p>";
-    
-    // Recuperiamo i dati
-    const sqSnap = await db.collection("squadre").get();
-    const rgSnap = await db.collection("ragazzi").get();
-    
-    container.innerHTML = "";
+       async function renderTabellone() {
+    const body = document.getElementById('tabellone-body');
+    const labelGiorno = document.getElementById('label-giorno');
+    if (labelGiorno) labelGiorno.innerText = `GIORNO ${giornoAttuale} (Clicca per cambiare)`;
 
-    // Mappatura colori Tailwind (stessa che usi in classifica)
-    const colorClasses = {
-        'blue': 'bg-blue-500',
-        'red': 'bg-red-500',
-        'green': 'bg-green-500',
-        'yellow': 'bg-yellow-500',
-        'purple': 'bg-purple-500'
-    };
+    body.innerHTML = "<tr><td colspan='13' class='p-10 text-center animate-pulse text-gray-400'>Sincronizzazione dati in corso...</td></tr>";
 
-    sqSnap.forEach(sqDoc => {
-        const sq = sqDoc.data();
-        const sqId = sqDoc.id;
-        let rHtml = "";
-        let nomiRagazziPerRicerca = "";
+    try {
+        const sqSnap = await db.collection("squadre").orderBy("nome").get();
+        const regSnap = await db.collection("registro").get();
+        const rgSnap = await db.collection("ragazzi").get();
 
-        // Determiniamo il colore di sfondo della card
-        const bgColor = colorClasses[sq.colore] || 'bg-white';
-        // Se lo sfondo è colorato, il testo del titolo deve essere bianco
-        const titleTextColor = bgColor !== 'bg-white' ? 'text-white' : 'text-gray-800';
-
-        rgSnap.forEach(rgDoc => {
-            const rg = rgDoc.data();
-            if(rg.Idsquadra && String(rg.Idsquadra).trim() === String(sqId).trim()) {
-                nomiRagazziPerRicerca += rg.nome.toLowerCase() + " ";
-                rHtml += `
-                <div class="flex justify-between items-center p-3 bg-white/20 backdrop-blur-sm rounded-xl mb-2 border border-white/30">
-                    <span class="text-sm font-bold text-white">${rg.nome}</span>
-                    <button onclick="flussoPunti('${sqId}', '${rg.nome.replace(/'/g, "\\'")}')" 
-                        class="bg-white px-3 py-1 rounded-lg text-[10px] font-black text-gray-800 shadow-sm uppercase active:scale-95 transition-transform">
-                        BONUS-MALUS
-                    </button>
-                </div>`;
+        // Creiamo una mappa "Ragazzo -> ID Squadra" insensibile alle maiuscole
+        const mappaRagazzoSquadra = {};
+        rgSnap.forEach(doc => {
+            const r = doc.data();
+            if (r.nome && r.Idsquadra) {
+                // Salviamo il nome in minuscolo come chiave
+                mappaRagazzoSquadra[r.nome.toLowerCase().trim()] = String(r.Idsquadra).trim();
             }
         });
 
-        const searchData = (sq.nome + " " + nomiRagazziPerRicerca).toLowerCase();
+        let html = "";
 
-        container.innerHTML += `
-        <div class="card-squadra ${bgColor} p-5 rounded-[2.5rem] shadow-lg mb-6 card-anim" data-search="${searchData}">
-            <div class="flex justify-between items-center mb-4 border-b border-white/20 pb-3">
-                <h3 class="font-black text-xl ${titleTextColor} uppercase tracking-tighter">${sq.nome}</h3>
-                <button onclick="flussoPunti('${sqId}', '${sq.nome.replace(/'/g, "\\'")}')" 
-                    class="text-[9px] bg-white text-gray-900 px-4 py-2 rounded-full font-black uppercase shadow-md active:scale-95 transition-transform">
-                    ASSEGNA A SQUADRA
-                </button>
-            </div>
-            ${rHtml || '<p class="text-[10px] text-white/70 italic text-center">Nessun componente assegnato.</p>'}
-        </div>`;
-    });
-}
-
-        async function renderCamere() {
-            const container = document.getElementById('camere-list');
-            container.innerHTML = "<p class='text-center animate-pulse p-10 text-gray-400'>Ispezione corridoi...</p>";
+        sqSnap.forEach(sqDoc => {
+            const sq = sqDoc.data();
+            const sqId = sqDoc.id.trim();
+            const nomeSq = (sq.nome || "").trim();
             
-            const rgSnap = await db.collection("ragazzi").get();
-            container.innerHTML = "";
-            const camere = {};
+            let d = { g1:0, g2:0, g3:0, g4:0, g5:0, g6:0, g7:0, i1:0, i2:0, i3:0, caccia:0, bm:0 };
 
-            rgSnap.forEach(doc => {
-                const r = doc.data();
-                if(!camere[r.camera]) camere[r.camera] = [];
-                camere[r.camera].push({ id: doc.id, ...r });
+            regSnap.forEach(regDoc => {
+                const r = regDoc.data();
+                if (!r.bersaglio) return;
+
+                const bersaglioLower = r.bersaglio.toLowerCase();
+                const nomeSqLower = nomeSq.toLowerCase();
+                
+                // Cerchiamo se nel bersaglio c'è il nome di un ragazzo della mappa
+                let idSquadraTrovato = null;
+                for (let nomeRagazzo in mappaRagazzoSquadra) {
+                    if (bersaglioLower.includes(nomeRagazzo)) {
+                        idSquadraTrovato = mappaRagazzoSquadra[nomeRagazzo];
+                        break;
+                    }
+                }
+
+                // La riga appartiene a questa squadra se:
+                // 1. Il bersaglio contiene il nome della squadra
+                // 2. Il bersaglio contiene l'ID della squadra
+                // 3. Abbiamo trovato un ragazzo nel bersaglio che appartiene a questa squadra
+                const appartiene = 
+                    bersaglioLower.includes(nomeSqLower) || 
+                    bersaglioLower.includes(sqId.toLowerCase()) || 
+                    idSquadraTrovato === sqId ||
+                    idSquadraTrovato === nomeSq;
+
+                if (appartiene) {
+                    const c = (r.causale || "").toUpperCase().trim();
+                    const p = Number(r.punti) || 0;
+
+                    if (c === "GIOCO 1") d.g1 += p;
+                    else if (c === "GIOCO 2") d.g2 += p;
+                    else if (c === "GIOCO 3") d.g3 += p;
+                    else if (c === "GIOCO 4") d.g4 += p;
+                    else if (c === "GIOCO 5") d.g5 += p;
+                    else if (c === "GIOCO 6") d.g6 += p;
+                    else if (c === "GIOCO 7") d.g7 += p;
+                    else if (c === "CACCIA") d.caccia += p;
+                    else if (c.includes("GIORNO 1")) d.i1 += p;
+                    else if (c.includes("GIORNO 2")) d.i2 += p;
+                    else if (c.includes("GIORNO 3")) d.i3 += p;
+                    else d.bm += p;
+                }
             });
 
-            Object.keys(camere).sort((a, b) => a - b).forEach(num => {
-                let rHtml = "";
-                camere[num].forEach(r => {
-                    rHtml += `
-                    <div class="flex justify-between items-center p-3 bg-gray-50 rounded-xl mb-2 border border-gray-100">
-                        <div class="flex flex-col">
-                            <span class="text-sm font-bold text-gray-700">${r.nome}</span>
-                            <span class="text-[9px] font-black text-gray-300 uppercase">${r.Idsquadra}</span>
-                        </div>
-                        <button onclick="flussoPunti('${r.Idsquadra}', '${r.nome}')" class="bg-white border-2 border-gray-100 px-3 py-1 rounded-lg text-[10px] font-black text-indigo-600 shadow-sm uppercase active:scale-90 transition-transform">BONUS-MALUS</button>
-                    </div>`;
-                });
+            html += `
+                <tr class="border-b last:border-0 hover:bg-gray-50">
+                    <td class="p-3 font-bold text-gray-800 sticky-col shadow-sm bg-white">${nomeSq}</td>
+                    <td class="p-2">${d.g1}</td>
+                    <td class="p-2 bg-amber-50/50 text-amber-700 font-bold">${d.i1}</td>
+                    <td class="p-2">${d.g2}</td>
+                    <td class="p-2">${d.g3}</td>
+                    <td class="p-2">${d.g4}</td>
+                    <td class="p-2 bg-amber-50/50 text-amber-700 font-bold">${d.i2}</td>
+                    <td class="p-2">${d.g5}</td>
+                    <td class="p-2">${d.g6}</td>
+                    <td class="p-2">${d.g7}</td>
+                    <td class="p-2 bg-amber-50/50 text-amber-700 font-bold">${d.i3}</td>
+                    <td class="p-2 text-indigo-600 font-bold">${d.caccia}</td>
+                    <td class="p-2 font-black ${d.bm >= 0 ? 'text-emerald-500' : 'text-rose-500'} bg-gray-50">${d.bm}</td>
+                </tr>`;
+        });
+        
+        body.innerHTML = html;
 
-                container.innerHTML += `
-                <div class="card-camera bg-white p-5 rounded-[2.5rem] shadow-sm border border-gray-100 mb-6" data-search="${num}">
-                    <div class="flex justify-between items-center mb-4 border-b border-gray-50 pb-3">
-                        <h3 class="font-black text-lg text-gray-800 tracking-tighter">CAMERA ${num}</h3>
-                        <button onclick="flussoPuntiCamera(${num})" class="bg-indigo-600 text-white text-[9px] font-black px-4 py-2 rounded-full uppercase tracking-widest shadow-md">ASSEGNA A CAMERA</button>
-                    </div>
-                    ${rHtml}
-                </div>`;
+    } catch (error) {
+        console.error("Errore:", error);
+        body.innerHTML = "<tr><td colspan='13' class='p-5 text-red-500'>Errore caricamento. Controlla la console.</td></tr>";
+    }
+}
+
+        function cambiaGiorno() { giornoAttuale = giornoAttuale >= 3 ? 1 : giornoAttuale + 1; localStorage.setItem('giorno_ispezione', giornoAttuale); renderTabellone(); }
+
+        async function renderSquadre() {
+            const container = document.getElementById('squadre-list');
+            const sqSnap = await db.collection("squadre").get();
+            const rgSnap = await db.collection("ragazzi").get();
+            const colorClasses = { 'blue': 'bg-blue-500', 'red': 'bg-red-500', 'green': 'bg-green-500', 'yellow': 'bg-yellow-500', 'purple': 'bg-purple-500', 'arcobaleno': 'bg-gradient-to-r from-red-500 via-yellow-400 via-green-500 via-blue-500 to-purple-600' };
+            container.innerHTML = "";
+            sqSnap.forEach(sqDoc => {
+                const sq = sqDoc.data(); const sqId = sqDoc.id;
+                let rHtml = ""; let searchNames = sq.nome;
+                rgSnap.forEach(rgDoc => {
+                    const rg = rgDoc.data();
+                    if(String(rg.Idsquadra) === String(sqId)) {
+                        searchNames += " " + rg.nome;
+                        rHtml += `<div class="flex justify-between items-center p-3 bg-white/20 backdrop-blur-md rounded-xl mb-2 border border-white/30"><span class="text-sm font-bold text-white">${rg.nome}</span><button onclick="flussoPunti('${sqId}', '${rg.nome}')" class="bg-white px-3 py-1 rounded-lg text-[10px] font-black text-gray-800 uppercase shadow-sm">Punti</button></div>`;
+                    }
+                });
+                container.innerHTML += `<div class="card-squadra ${colorClasses[sq.colore]||'bg-white'} p-5 rounded-[2.5rem] shadow-lg mb-6 card-anim" data-search="${searchNames.toLowerCase()}"><div class="flex justify-between items-center mb-4 border-b border-white/20 pb-3"><h3 class="font-black text-xl text-white uppercase tracking-tighter">${sq.nome}</h3><button onclick="flussoPunti('${sqId}', '${sq.nome}')" class="text-[9px] bg-white text-gray-900 px-4 py-2 rounded-full font-black uppercase shadow-md">SQUADRA</button></div>${rHtml}</div>`;
             });
         }
 
-        // --- CORE LOGIC: POINT FLOW ---
+        async function renderCamere() {
+            const container = document.getElementById('camere-list');
+            const rgSnap = await db.collection("ragazzi").get();
+            container.innerHTML = "";
+            const camere = {};
+            rgSnap.forEach(doc => { const r = doc.data(); if(!camere[r.camera]) camere[r.camera] = []; camere[r.camera].push({ id: doc.id, ...r }); });
+            Object.keys(camere).sort((a,b)=>a-b).forEach(num => {
+                let rHtml = "";
+                camere[num].forEach(r => { rHtml += `<div class="flex justify-between items-center p-3 bg-gray-50 rounded-xl mb-2"><span class="text-sm font-bold text-gray-700">${r.nome}</span><span class="text-[9px] font-black text-gray-300 uppercase">${r.Idsquadra}</span></div>`; });
+                container.innerHTML += `<div class="card-camera bg-white p-5 rounded-[2.5rem] shadow-sm border border-gray-100 mb-6" data-search="${num}"><div class="flex justify-between items-center mb-4 border-b border-gray-50 pb-3"><h3 class="font-black text-lg text-gray-800 tracking-tighter">CAMERA ${num}</h3><button onclick="flussoPuntiCamera(${num})" class="bg-indigo-600 text-white text-[9px] font-black px-4 py-2 rounded-full uppercase shadow-md">ISPEZIONE</button></div>${rHtml}</div>`;
+            });
+        }
+
         async function flussoPunti(idSquadra, nomeBersaglio) {
-            const { value: tipo } = await Swal.fire({
-                title: 'Azione per ' + nomeBersaglio,
-                text: 'Che tipo di punteggio vuoi assegnare?',
-                showDenyButton: true,
-                confirmButtonText: '⭐ BONUS',
-                denyButtonText: '🚨 MALUS',
-                confirmButtonColor: '#10b981',
-                denyButtonColor: '#ef4444',
-                customClass: { popup: 'rounded-[2rem]' }
-            });
-
+            const { value: tipo } = await Swal.fire({ title: 'Azione per ' + nomeBersaglio, showDenyButton: true, confirmButtonText: '⭐ BONUS', denyButtonText: '🚨 MALUS', confirmButtonColor: '#10b981', denyButtonColor: '#ef4444' });
             if (tipo === undefined) return;
-
-            const { value: q } = await Swal.fire({
-                title: 'Punteggio',
-                input: 'number',
-                inputPlaceholder: 'Inserisci il valore numerico',
-                showCancelButton: true
-            });
-
+            const { value: q } = await Swal.fire({ title: 'Punteggio', input: 'number' });
             if (!q) return;
-
-            const { value: m } = await Swal.fire({
-                title: 'Motivazione',
-                input: 'text',
-                inputPlaceholder: 'Es: Pulizia, Silenzio, Vittoria gioco...',
-                showCancelButton: true
-            });
-
+            const { value: m } = await Swal.fire({ title: 'Motivazione', input: 'text', inputPlaceholder: 'Es: Gioco 1, Comportamento...' });
             if (m === undefined) return;
-
             const finale = tipo ? Number(q) : -Math.abs(Number(q));
             eseguiAggiornamento(idSquadra, nomeBersaglio, finale, m || "Nessun motivo");
         }
 
         async function flussoPuntiCamera(numCamera) {
-            const { value: tipo } = await Swal.fire({
-                title: `Camera ${numCamera}`,
-                text: "Il punteggio verrà dato a TUTTI i componenti",
-                showDenyButton: true,
-                confirmButtonText: '⭐ BONUS',
-                denyButtonText: '🚨 MALUS',
-                confirmButtonColor: '#10b981',
-                denyButtonColor: '#ef4444'
-            });
-
+            const { value: tipo } = await Swal.fire({ title: `Camera ${numCamera}`, text: "ISPEZIONE GIORNO " + giornoAttuale, showDenyButton: true, confirmButtonText: '⭐ BONUS', denyButtonText: '🚨 MALUS', confirmButtonColor: '#10b981', denyButtonColor: '#ef4444' });
             if (tipo === undefined) return;
-            const { value: q } = await Swal.fire({ title: 'Quanti punti?', input: 'number' });
+            const { value: q } = await Swal.fire({ title: 'Punteggio', input: 'number' });
             if (!q) return;
-            const { value: m } = await Swal.fire({ title: 'Motivo', input: 'text' });
-            if (m === undefined) return;
-
             const val = tipo ? Number(q) : -Math.abs(Number(q));
             const snap = await db.collection("ragazzi").where("camera", "==", Number(numCamera)).get();
-            
             snap.forEach(doc => {
                 const r = doc.data();
-                eseguiAggiornamento(r.Idsquadra, `Cam ${numCamera} (${r.nome})`, val, m || `Ispezione Camera ${numCamera}`);
+                eseguiAggiornamento(r.Idsquadra, `Cam ${numCamera} (${r.nome})`, val, "Ispezione Camera");
             });
         }
 
         async function eseguiAggiornamento(idSquadra, bersaglio, punti, motivo) {
             const ref = db.collection("squadre").doc(idSquadra);
-            
             try {
                 await ref.update({ punti: firebase.firestore.FieldValue.increment(punti) });
-                await db.collection("registro").add({
-                    padrino: CURRENT_USER,
-                    bersaglio: bersaglio,
-                    punti: punti,
-                    causale: motivo,
-                    data: firebase.firestore.FieldValue.serverTimestamp()
-                });
-
-                if (punti > 0) {
-                    confetti({ particleCount: 150, spread: 70, origin: { y: 0.7 } });
-                    Swal.fire({
-                        title: 'Confermato! ⭐',
-                        html: `Hai aggiunto <b>${punti} punti</b> a <b>${bersaglio}</b>.<br><small>${motivo}</small>`,
-                        icon: 'success'
-                    });
-                } else {
-                    Swal.fire({
-                        title: 'Registrato 🚨',
-                        html: `Hai sottratto <b>${Math.abs(punti)} punti</b> a <b>${bersaglio}</b>.<br><small>${motivo}</small>`,
-                        icon: 'warning'
-                    });
+                let causaleFinale = motivo.trim();
+                if (motivo.toLowerCase().includes("ispezione camera")) {
+                    causaleFinale = `ISPEZIONE CAMERA - GIORNO ${giornoAttuale}`;
+                } else if (motivo.toLowerCase().startsWith("gioco")) {
+                    causaleFinale = motivo.toUpperCase();
                 }
-            } catch (e) {
-                Swal.fire('Errore!', 'ID Squadra "' + idSquadra + '" non trovato nel DB.', 'error');
-            }
+                await db.collection("registro").add({
+                    padrino: CURRENT_USER, bersaglio: bersaglio, punti: punti, causale: causaleFinale, data: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                if (punti > 0) confetti({ particleCount: 150, spread: 70, origin: { y: 0.7 } });
+                Swal.fire({
+                    title: punti > 0 ? 'Ottimo! ⭐' : 'Registrato 🚨',
+                    html: `<b>${punti} punti</b> a <b>${bersaglio}</b><br><small class='uppercase font-bold text-gray-400'>${causaleFinale}</small>`,
+                    icon: punti > 0 ? 'success' : 'warning',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+                if(document.getElementById('tab-tabellone').classList.contains('hidden') === false) renderTabellone();
+            } catch (e) { Swal.fire('Errore!', e.message, 'error'); }
         }
 
-        // --- UTILS ---
         function filtraElementi(classe, query) {
             const cards = document.getElementsByClassName(classe);
-            const filter = query.toLowerCase();
-            for (let card of cards) {
-                const text = card.getAttribute('data-search');
-                card.style.display = text.includes(filter) ? "block" : "none";
-            }
+            const f = query.toLowerCase();
+            for (let c of cards) { c.style.display = c.getAttribute('data-search').includes(f) ? "block" : "none"; }
         }
 
         initLogin();
     </script>
-    <script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js');
-  }
-</script>
 </body>
 </html>
