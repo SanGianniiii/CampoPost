@@ -56,7 +56,7 @@
         <section id="tab-classifica" class="tab-content max-w-md mx-auto">
             <div id="classifica-list" class="space-y-3"></div>
             <div class="mt-8">
-                <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 ml-2">Registro Attività Live</h3>
+                <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 ml-2">STORICO PUNTI ASSEGNATI</h3>
                 <div id="registro-list" class="space-y-3"></div>
             </div>
         </section>
@@ -86,7 +86,7 @@
         </section>
 
         <section id="tab-camere" class="tab-content hidden max-w-md mx-auto">
-            <input type="number" id="search-camera" oninput="filtraElementi('card-camera', this.value)" placeholder="🔍 Numero camera..." class="w-full p-4 rounded-2xl shadow-sm mb-6 outline-none text-sm font-medium">
+            <input type="text" id="search-camera" oninput="filtraElementi('card-camera', this.value)" placeholder="🔍 Cerca camera o nome ragazzo..." class="w-full p-4 rounded-2xl shadow-sm mb-6 outline-none text-sm font-medium">
             <div id="camere-list" class="space-y-6"></div>
         </section>
     </main>
@@ -105,6 +105,19 @@
         
         let CURRENT_USER = localStorage.getItem('padrino');
         let giornoAttuale = parseInt(localStorage.getItem('giorno_ispezione')) || 1;
+
+        // Oggetto per il menu a tendina dei giochi
+        const GIOCHI_LIST = {
+            'GIOCO 1': 'GIOCO 1',
+            'GIOCO 2': 'GIOCO 2',
+            'GIOCO 3': 'GIOCO 3',
+            'GIOCO 4': 'GIOCO 4',
+            'GIOCO 5': 'GIOCO 5',
+            'GIOCO 6': 'GIOCO 6',
+            'GIOCO 7': 'GIOCO 7',
+            'CACCIA': 'CACCIA',
+            'B/M': 'BONUS / MALUS GENERICO'
+        };
 
         async function initLogin() {
             if (!CURRENT_USER) {
@@ -164,12 +177,10 @@
         const regSnap = await db.collection("registro").get();
         const rgSnap = await db.collection("ragazzi").get();
 
-        // Creiamo una mappa "Ragazzo -> ID Squadra" insensibile alle maiuscole
         const mappaRagazzoSquadra = {};
         rgSnap.forEach(doc => {
             const r = doc.data();
             if (r.nome && r.Idsquadra) {
-                // Salviamo il nome in minuscolo come chiave
                 mappaRagazzoSquadra[r.nome.toLowerCase().trim()] = String(r.Idsquadra).trim();
             }
         });
@@ -190,7 +201,6 @@
                 const bersaglioLower = r.bersaglio.toLowerCase();
                 const nomeSqLower = nomeSq.toLowerCase();
                 
-                // Cerchiamo se nel bersaglio c'è il nome di un ragazzo della mappa
                 let idSquadraTrovato = null;
                 for (let nomeRagazzo in mappaRagazzoSquadra) {
                     if (bersaglioLower.includes(nomeRagazzo)) {
@@ -199,10 +209,6 @@
                     }
                 }
 
-                // La riga appartiene a questa squadra se:
-                // 1. Il bersaglio contiene il nome della squadra
-                // 2. Il bersaglio contiene l'ID della squadra
-                // 3. Abbiamo trovato un ragazzo nel bersaglio che appartiene a questa squadra
                 const appartiene = 
                     bersaglioLower.includes(nomeSqLower) || 
                     bersaglioLower.includes(sqId.toLowerCase()) || 
@@ -269,46 +275,160 @@
                     const rg = rgDoc.data();
                     if(String(rg.Idsquadra) === String(sqId)) {
                         searchNames += " " + rg.nome;
-                        rHtml += `<div class="flex justify-between items-center p-3 bg-white/20 backdrop-blur-md rounded-xl mb-2 border border-white/30"><span class="text-sm font-bold text-white">${rg.nome}</span><button onclick="flussoPunti('${sqId}', '${rg.nome}')" class="bg-white px-3 py-1 rounded-lg text-[10px] font-black text-gray-800 uppercase shadow-sm">Punti</button></div>`;
+                        rHtml += `<div class="flex justify-between items-center p-3 bg-white/20 backdrop-blur-md rounded-xl mb-2 border border-white/30"><span class="text-sm font-bold text-white">${rg.nome}</span><button onclick="flussoPunti('${sqId}', '${rg.nome}')" class="bg-white px-3 py-1 rounded-lg text-[10px] font-black text-gray-800 uppercase shadow-sm">BONUS/MALUS</button></div>`;
                     }
                 });
-                container.innerHTML += `<div class="card-squadra ${colorClasses[sq.colore]||'bg-white'} p-5 rounded-[2.5rem] shadow-lg mb-6 card-anim" data-search="${searchNames.toLowerCase()}"><div class="flex justify-between items-center mb-4 border-b border-white/20 pb-3"><h3 class="font-black text-xl text-white uppercase tracking-tighter">${sq.nome}</h3><button onclick="flussoPunti('${sqId}', '${sq.nome}')" class="text-[9px] bg-white text-gray-900 px-4 py-2 rounded-full font-black uppercase shadow-md">SQUADRA</button></div>${rHtml}</div>`;
+                // Sostituito il pulsante con la nuova funzione flussoPuntiSquadraGioco
+                container.innerHTML += `<div class="card-squadra ${colorClasses[sq.colore]||'bg-white'} p-5 rounded-[2.5rem] shadow-lg mb-6 card-anim" data-search="${searchNames.toLowerCase()}"><div class="flex justify-between items-center mb-4 border-b border-white/20 pb-3"><h3 class="font-black text-xl text-white uppercase tracking-tighter">${sq.nome}</h3><button onclick="flussoPuntiSquadraGioco('${sqId}', '${sq.nome}')" class="text-[9px] bg-white text-gray-900 px-4 py-2 rounded-full font-black uppercase shadow-md">ASSEGNA A SQUADRA</button></div>${rHtml}</div>`;
             });
         }
 
         async function renderCamere() {
-            const container = document.getElementById('camere-list');
-            const rgSnap = await db.collection("ragazzi").get();
-            container.innerHTML = "";
-            const camere = {};
-            rgSnap.forEach(doc => { const r = doc.data(); if(!camere[r.camera]) camere[r.camera] = []; camere[r.camera].push({ id: doc.id, ...r }); });
-            Object.keys(camere).sort((a,b)=>a-b).forEach(num => {
-                let rHtml = "";
-                camere[num].forEach(r => { rHtml += `<div class="flex justify-between items-center p-3 bg-gray-50 rounded-xl mb-2"><span class="text-sm font-bold text-gray-700">${r.nome}</span><span class="text-[9px] font-black text-gray-300 uppercase">${r.Idsquadra}</span></div>`; });
-                container.innerHTML += `<div class="card-camera bg-white p-5 rounded-[2.5rem] shadow-sm border border-gray-100 mb-6" data-search="${num}"><div class="flex justify-between items-center mb-4 border-b border-gray-50 pb-3"><h3 class="font-black text-lg text-gray-800 tracking-tighter">CAMERA ${num}</h3><button onclick="flussoPuntiCamera(${num})" class="bg-indigo-600 text-white text-[9px] font-black px-4 py-2 rounded-full uppercase shadow-md">ISPEZIONE</button></div>${rHtml}</div>`;
-            });
-        }
+    const container = document.getElementById('camere-list');
+    const rgSnap = await db.collection("ragazzi").get();
+    container.innerHTML = "";
+    const camere = {};
 
+    // Raggruppiamo i ragazzi per camera
+    rgSnap.forEach(doc => { 
+        const r = doc.data(); 
+        if(!camere[r.camera]) camere[r.camera] = []; 
+        camere[r.camera].push({ id: doc.id, ...r }); 
+    });
+
+    // Creiamo le card
+    Object.keys(camere).sort((a,b)=>a-b).forEach(num => {
+        let rHtml = "";
+        let searchData = "camera " + num; // Iniziamo la stringa di ricerca col numero camera
+
+        camere[num].forEach(r => { 
+            searchData += " " + r.nome.toLowerCase(); // Aggiungiamo i nomi dei ragazzi alla ricerca
+            rHtml += `
+                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-xl mb-2">
+                    <span class="text-sm font-bold text-gray-700">${r.nome}</span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[9px] font-black text-gray-300 uppercase">${r.Idsquadra}</span>
+                        <button onclick="flussoPuntiSingoloIspezione('${r.Idsquadra}', '${r.nome}', ${num})" class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded text-[10px] font-black uppercase shadow-sm">ASSEGNA SINGOLA ISPEZIONE</button>
+                    </div>
+                </div>`; 
+        });
+
+        // Inseriamo searchData nel data-search della card
+        container.innerHTML += `
+            <div class="card-camera bg-white p-5 rounded-[2.5rem] shadow-sm border border-gray-100 mb-6 card-anim" data-search="${searchData}">
+                <div class="flex justify-between items-center mb-4 border-b border-gray-50 pb-3">
+                    <h3 class="font-black text-lg text-gray-800 tracking-tighter">CAMERA ${num}</h3>
+                    <button onclick="flussoPuntiCamera(${num})" class="bg-indigo-600 text-white text-[9px] font-black px-4 py-2 rounded-full uppercase shadow-md">ISPEZIONE</button>
+                </div>
+                ${rHtml}
+            </div>`;
+    });
+}
+
+        // Funzione originale per il singolo ragazzo nel tab Squadre (input testuale libero)
         async function flussoPunti(idSquadra, nomeBersaglio) {
             const { value: tipo } = await Swal.fire({ title: 'Azione per ' + nomeBersaglio, showDenyButton: true, confirmButtonText: '⭐ BONUS', denyButtonText: '🚨 MALUS', confirmButtonColor: '#10b981', denyButtonColor: '#ef4444' });
             if (tipo === undefined) return;
             const { value: q } = await Swal.fire({ title: 'Punteggio', input: 'number' });
             if (!q) return;
-            const { value: m } = await Swal.fire({ title: 'Motivazione', input: 'text', inputPlaceholder: 'Es: Gioco 1, Comportamento...' });
+            const { value: m } = await Swal.fire({ title: 'Motivazione', input: 'text', inputPlaceholder: 'Es: Comportamento...' });
             if (m === undefined) return;
             const finale = tipo ? Number(q) : -Math.abs(Number(q));
             eseguiAggiornamento(idSquadra, nomeBersaglio, finale, m || "Nessun motivo");
         }
 
-        async function flussoPuntiCamera(numCamera) {
-            const { value: tipo } = await Swal.fire({ title: `Camera ${numCamera}`, text: "ISPEZIONE GIORNO " + giornoAttuale, showDenyButton: true, confirmButtonText: '⭐ BONUS', denyButtonText: '🚨 MALUS', confirmButtonColor: '#10b981', denyButtonColor: '#ef4444' });
+        // NUOVA FUNZIONE: Assegnazione Punti alla Squadra con menu a tendina
+        async function flussoPuntiSquadraGioco(idSquadra, nomeBersaglio) {
+            const { value: tipo } = await Swal.fire({ title: 'Azione per ' + nomeBersaglio, showDenyButton: true, confirmButtonText: '⭐ BONUS', denyButtonText: '🚨 MALUS', confirmButtonColor: '#10b981', denyButtonColor: '#ef4444' });
+            if (tipo === undefined) return;
+            
+            const { value: q } = await Swal.fire({ title: 'Punteggio', input: 'number' });
+            if (!q) return;
+
+            const { value: giocoSelezionato } = await Swal.fire({ 
+                title: 'Seleziona il Gioco', 
+                input: 'select', 
+                inputOptions: GIOCHI_LIST,
+                inputPlaceholder: 'Scegli il gioco...',
+                showCancelButton: true
+            });
+            if (!giocoSelezionato) return;
+
+            const finale = tipo ? Number(q) : -Math.abs(Number(q));
+            eseguiAggiornamento(idSquadra, nomeBersaglio, finale, giocoSelezionato);
+        }
+
+        // NUOVA FUNZIONE: Assegnazione Ispezione a SINGOLO ragazzo nella camera
+        async function flussoPuntiSingoloIspezione(idSquadra, nomeRagazzo, numCamera) {
+            const { value: tipo } = await Swal.fire({ title: 'Ispezione per ' + nomeRagazzo, showDenyButton: true, confirmButtonText: '⭐ BONUS', denyButtonText: '🚨 MALUS', confirmButtonColor: '#10b981', denyButtonColor: '#ef4444' });
             if (tipo === undefined) return;
             const { value: q } = await Swal.fire({ title: 'Punteggio', input: 'number' });
             if (!q) return;
-            const val = tipo ? Number(q) : -Math.abs(Number(q));
+
+            const finale = tipo ? Number(q) : -Math.abs(Number(q));
+            // Inviando "ispezione camera", la funzione eseguiAggiornamento formatterà bene la stringa con il giorno
+            eseguiAggiornamento(idSquadra, `Cam ${numCamera} (${nomeRagazzo})`, finale, "Ispezione Camera");
+        }
+
+        // MODIFICATA: Ispezione intera camera con CHECKBOXES
+        async function flussoPuntiCamera(numCamera) {
+            // Recupero prima i ragazzi della camera per creare la lista da cliccare
             const snap = await db.collection("ragazzi").where("camera", "==", Number(numCamera)).get();
-            snap.forEach(doc => {
-                const r = doc.data();
+            let ragazzi = [];
+            snap.forEach(doc => ragazzi.push({ id: doc.id, ...doc.data() }));
+
+            if(ragazzi.length === 0) {
+                Swal.fire('Attenzione', 'Nessun ragazzo trovato in questa camera.', 'info');
+                return;
+            }
+
+            // Costruisco l'HTML con le spunte
+            let checkboxHtml = '<div class="text-left space-y-3 mt-4 mb-2">';
+            ragazzi.forEach((r, index) => {
+                checkboxHtml += `
+                    <label class="flex items-center space-x-3 bg-gray-50 p-3 rounded-xl cursor-pointer hover:bg-indigo-50 border border-gray-100">
+                        <input type="checkbox" id="chk-ragazzo-${index}" checked class="w-6 h-6 text-indigo-600 rounded">
+                        <span class="font-bold text-gray-700">${r.nome}</span>
+                    </label>`;
+            });
+            checkboxHtml += '</div><p class="text-xs text-gray-400 mt-2">Deseleziona chi non deve ricevere il punteggio</p>';
+
+            // Finestra per selezionare chi premiare/penalizzare
+            const { value: ragazziSelezionati } = await Swal.fire({
+                title: `Camera ${numCamera} - Chi c'è?`,
+                html: checkboxHtml,
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Continua &rarr;',
+                confirmButtonColor: '#4f46e5',
+                preConfirm: () => {
+                    let selected = [];
+                    ragazzi.forEach((r, index) => {
+                        if (document.getElementById(`chk-ragazzo-${index}`).checked) {
+                            selected.push(r);
+                        }
+                    });
+                    if(selected.length === 0) {
+                        Swal.showValidationMessage('Devi selezionare almeno un ragazzo!');
+                    }
+                    return selected;
+                }
+            });
+
+            if (!ragazziSelezionati) return; // Se preme annulla
+
+            // Ora chiedo se è Bonus o Malus
+            const { value: tipo } = await Swal.fire({ title: `ISPEZIONE GIORNO ${giornoAttuale}`, text: `Applicato a ${ragazziSelezionati.length} ragazzi`, showDenyButton: true, confirmButtonText: '⭐ BONUS', denyButtonText: '🚨 MALUS', confirmButtonColor: '#10b981', denyButtonColor: '#ef4444' });
+            if (tipo === undefined) return;
+            
+            // Chiedo i punti
+            const { value: q } = await Swal.fire({ title: 'Punteggio da assegnare a CIASCUNO', input: 'number' });
+            if (!q) return;
+            
+            const val = tipo ? Number(q) : -Math.abs(Number(q));
+
+            // Eseguo l'aggiornamento solo per i ragazzi che erano spuntati
+            ragazziSelezionati.forEach(r => {
                 eseguiAggiornamento(r.Idsquadra, `Cam ${numCamera} (${r.nome})`, val, "Ispezione Camera");
             });
         }
@@ -320,7 +440,7 @@
                 let causaleFinale = motivo.trim();
                 if (motivo.toLowerCase().includes("ispezione camera")) {
                     causaleFinale = `ISPEZIONE CAMERA - GIORNO ${giornoAttuale}`;
-                } else if (motivo.toLowerCase().startsWith("gioco")) {
+                } else if (motivo.toLowerCase().startsWith("gioco") || motivo.toLowerCase() === "caccia") {
                     causaleFinale = motivo.toUpperCase();
                 }
                 await db.collection("registro").add({
