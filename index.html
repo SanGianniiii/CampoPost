@@ -429,13 +429,8 @@ async function renderTabellone() {
             eseguiAggiornamento(idSquadra, nomeBersaglio, finale, "B/M", m);
         }
 
-        async function flussoPuntiSquadraGioco(idSquadra, nomeBersaglio) {
-            const { value: tipo } = await Swal.fire({ title: 'Azione per ' + nomeBersaglio, showDenyButton: true, confirmButtonText: '⭐ BONUS', denyButtonText: '🚨 MALUS', confirmButtonColor: '#10b981', denyButtonColor: '#ef4444' });
-            if (tipo === undefined) return;
-            
-            const { value: q } = await Swal.fire({ title: 'Punteggio', input: 'number' });
-            if (!q) return;
-
+       async function flussoPuntiSquadraGioco(idSquadra, nomeBersaglio) {
+            // 1. Scelta del Gioco (Spostato all'inizio)
             const { value: giocoSelezionato } = await Swal.fire({ 
                 title: 'Seleziona il Gioco o Causale', 
                 input: 'select', 
@@ -445,17 +440,32 @@ async function renderTabellone() {
             });
             if (!giocoSelezionato) return;
 
+            // 2. Chiede la motivazione subito dopo, solo se è un B/M generico
             let motivazione = "";
-            // Se scegliamo B/M generico, chiediamo il motivo come facciamo per i singoli
             if (giocoSelezionato === 'B/M') {
                 const { value: m } = await Swal.fire({ title: 'Motivazione', input: 'text', inputPlaceholder: 'Es: Riordino tavoli, Comportamento...' });
                 if (m === undefined) return;
                 motivazione = m;
             }
 
+            // 3. Scelta Bonus/Malus (Ti mostra anche quale gioco hai scelto per sicurezza)
+            const { value: tipo } = await Swal.fire({ 
+                title: 'Azione per ' + nomeBersaglio, 
+                text: `Stai assegnando punti per: ${GIOCHI_LIST[giocoSelezionato]}`,
+                showDenyButton: true, 
+                confirmButtonText: '⭐ BONUS', 
+                denyButtonText: '🚨 MALUS', 
+                confirmButtonColor: '#10b981', 
+                denyButtonColor: '#ef4444' 
+            });
+            if (tipo === undefined) return;
+            
+            // 4. Inserimento Punteggio
+            const { value: q } = await Swal.fire({ title: 'Punteggio', input: 'number' });
+            if (!q) return;
+
             const finale = tipo ? Number(q) : -Math.abs(Number(q));
             
-            // Passiamo "motivazione" alla funzione di salvataggio (se è un gioco normale, sarà vuota e verrà ignorata)
             eseguiAggiornamento(idSquadra, nomeBersaglio, finale, giocoSelezionato, motivazione);
         }
 
