@@ -62,7 +62,7 @@
             </div>
         </section>
 
-        <section id="tab-tabellone" class="tab-content hidden">
+<section id="tab-tabellone" class="tab-content hidden">
             <div class="mb-4 flex flex-col items-center">
                 <button onclick="cambiaGiorno()" id="label-giorno" class="bg-indigo-600 text-white px-6 py-2 rounded-full font-black text-[10px] uppercase tracking-widest shadow-lg transition-all"></button>
             </div>
@@ -73,7 +73,7 @@
                             <th class="p-3 sticky-col border-r-2 border-gray-100 z-20"></th>
                             <th colspan="3" class="p-3 border-r-2 border-gray-100">Mercoledì</th>
                             <th colspan="5" class="p-3 border-r-2 border-gray-100">Giovedì</th>
-                            <th colspan="3" class="p-3 border-r-2 border-gray-100">Venerdì</th>
+                            <th colspan="8" class="p-3 border-r-2 border-gray-100">Venerdì</th>
                             <th colspan="3" class="p-3 border-r-2 border-gray-100">Sabato</th>
                             <th colspan="8" class="p-3">Domenica</th>
                         </tr>
@@ -84,7 +84,14 @@
                             
                             <th class="p-2 bg-amber-50/50 text-amber-700">Isp</th><th class="p-2">La Voce</th><th class="p-2">Disegna</th><th class="p-2">Thriller</th><th class="p-2 text-indigo-500 border-r-2 border-gray-100">B/M</th>
                             
-                            <th class="p-2 bg-amber-50/50 text-amber-700">Isp</th><th class="p-2">Tornei</th><th class="p-2 text-indigo-500 border-r-2 border-gray-100">B/M</th>
+                            <th class="p-2 bg-amber-50/50 text-amber-700">Isp</th>
+                            <th class="p-2">Roverino</th>
+                            <th class="p-2">Bagherone</th>
+                            <th class="p-2">Dodgeball</th>
+                            <th class="p-2">Scalpo</th>
+                            <th class="p-2">Staffetta</th>
+                            <th class="p-2">Cerchia</th>
+                            <th class="p-2 text-indigo-500 border-r-2 border-gray-100">B/M</th>
                             
                             <th class="p-2 bg-amber-50/50 text-amber-700">Isp</th><th class="p-2">Caccia</th><th class="p-2 text-indigo-500 border-r-2 border-gray-100">B/M</th>
                             
@@ -125,7 +132,7 @@
         const GIORNI = ['MERCOLEDÌ', 'GIOVEDÌ', 'VENERDÌ', 'SABATO', 'DOMENICA'];
         let indiceGiorno = parseInt(localStorage.getItem('indice_giorno')) || 0;
 
-        // Nuova lista giochi aggiornata
+       // Nuova lista giochi aggiornata con i giochi del venerdì
         const GIOCHI_LIST = {
             'B/M': '⭐ BONUS/ MALUS A INTERA SQUADRA',
             'COCKTAIL SBAGLIATO': 'Cocktail Sbagliato',
@@ -133,7 +140,12 @@
             'LA VOCE DEL POST CRESIMA': 'La Voce del Post Cresima',
             'DISEGNA COL DITO': 'Disegna col Dito',
             'THRILLER NIGHT SHOW': 'Thriller Night Show',
-            'TORNEI': 'Tornei',
+            'ROVERINO': 'Roverino',
+            'BAGHERONE': 'Bagherone',
+            'DODGEBALL': 'Dodgeball',
+            'SCALPO A SQUADRE': 'Scalpo a Squadre',
+            'STAFFETTA DELLA COLLABORAZIONE': 'Staffetta della Collaborazione',
+            'CERCHIA LA SQUADRA': 'Cerchia la Squadra',
             'CACCIA': 'Caccia',
             'BICCHIERI IN LONTANANZA': 'Bicchieri in Lontananza',
             'GIRO DEL MONDO IN 80 MINUTI': 'Giro del Mondo in 80 Minuti',
@@ -189,12 +201,13 @@
             });
         }
 
-        async function renderTabellone() {
+async function renderTabellone() {
             const body = document.getElementById('tabellone-body');
             const labelGiorno = document.getElementById('label-giorno');
             if (labelGiorno) labelGiorno.innerText = `GIORNO: ${GIORNI[indiceGiorno]} (Clicca qui)`;
 
-            body.innerHTML = "<tr><td colspan='22' class='p-10 text-center animate-pulse text-gray-400'>Sincronizzazione dati in corso...</td></tr>";
+            // Aggiornato colspan a 27 per via delle nuove colonne
+            body.innerHTML = "<tr><td colspan='27' class='p-10 text-center animate-pulse text-gray-400'>Sincronizzazione dati in corso...</td></tr>";
 
             try {
                 const sqSnap = await db.collection("squadre").orderBy("nome").get();
@@ -216,10 +229,11 @@
                     const sqId = sqDoc.id.trim();
                     const nomeSq = (sq.nome || "").trim();
                     
+                    // Struttura dati aggiornata con i singoli giochi del venerdì
                     let d = {
                         cocktail:0, topogun:0, bm_mer:0,
                         isp_gio:0, voce:0, disegna:0, thriller:0, bm_gio:0,
-                        isp_ven:0, tornei:0, bm_ven:0,
+                        isp_ven:0, roverino:0, bagherone:0, dodgeball:0, scalpo:0, staffetta:0, cerchia:0, bm_ven:0,
                         isp_sab:0, caccia:0, bm_sab:0,
                         isp_dom:0, bicchieri:0, giro:0, numeri:0, snake:0, spongebob:0, lancio:0, bm_dom:0
                     };
@@ -261,9 +275,14 @@
                             else if (c === "THRILLER NIGHT SHOW") d.thriller += p;
                             else if (c.startsWith("B/M - GIOVEDÌ") || c.startsWith("B/M - GIOVEDI")) d.bm_gio += p;
 
-                            // VENERDI
+                            // VENERDI (Modificato con i giochi singoli)
                             else if (c.startsWith("ISPEZIONE CAMERA - VENERDÌ") || c.startsWith("ISPEZIONE CAMERA - VENERDI")) d.isp_ven += p;
-                            else if (c === "TORNEI") d.tornei += p;
+                            else if (c === "ROVERINO") d.roverino += p;
+                            else if (c === "BAGHERONE") d.bagherone += p;
+                            else if (c === "DODGEBALL") d.dodgeball += p;
+                            else if (c === "SCALPO A SQUADRE") d.scalpo += p;
+                            else if (c === "STAFFETTA DELLA COLLABORAZIONE") d.staffetta += p;
+                            else if (c === "CERCHIA LA SQUADRA") d.cerchia += p;
                             else if (c.startsWith("B/M - VENERDÌ") || c.startsWith("B/M - VENERDI")) d.bm_ven += p;
 
                             // SABATO
@@ -286,6 +305,7 @@
                     // Funzione Helper per colorare rosso/verde
                     const colorScore = (val) => val > 0 ? `<span class="text-emerald-500 font-black">+${val}</span>` : (val < 0 ? `<span class="text-rose-500 font-black">${val}</span>` : val);
 
+                    // Generazione HTML delle righe con le nuove colonne del venerdì
                     html += `
                         <tr class="border-b last:border-0 hover:bg-gray-50">
                             <td class="p-3 font-bold text-gray-800 sticky-col border-r-2 border-gray-100 shadow-sm bg-white">${nomeSq}</td>
@@ -301,7 +321,12 @@
                             <td class="p-2 bg-indigo-50/30 border-r-2 border-gray-100">${colorScore(d.bm_gio)}</td>
                             
                             <td class="p-2 bg-amber-50/50 font-bold text-amber-700">${d.isp_ven}</td>
-                            <td class="p-2">${d.tornei}</td>
+                            <td class="p-2">${d.roverino}</td>
+                            <td class="p-2">${d.bagherone}</td>
+                            <td class="p-2">${d.dodgeball}</td>
+                            <td class="p-2">${d.scalpo}</td>
+                            <td class="p-2">${d.staffetta}</td>
+                            <td class="p-2">${d.cerchia}</td>
                             <td class="p-2 bg-indigo-50/30 border-r-2 border-gray-100">${colorScore(d.bm_ven)}</td>
 
                             <td class="p-2 bg-amber-50/50 font-bold text-amber-700">${d.isp_sab}</td>
@@ -323,7 +348,7 @@
 
             } catch (error) {
                 console.error("Errore:", error);
-                body.innerHTML = "<tr><td colspan='22' class='p-5 text-red-500'>Errore caricamento. Controlla la console.</td></tr>";
+                body.innerHTML = "<tr><td colspan='27' class='p-5 text-red-500'>Errore caricamento. Controlla la console.</td></tr>";
             }
         }
 
