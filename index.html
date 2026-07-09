@@ -84,7 +84,7 @@
                             
                             <th class="p-2 bg-amber-50/50 text-amber-700">Isp</th><th class="p-2">La Voce</th><th class="p-2">Disegna</th><th class="p-2">Thriller</th><th class="p-2 text-indigo-500 border-r-2 border-gray-100">B/M</th>
                             
-                            <th class="p-2 bg-amber-50/50 text-amber-700">Isp</th><th class="p-2">Roverino</th><th class="p-2">Bagherone</th><th class="p-2">Dodgeball</th><th class="p-2">Scalpo</th><th class="p-2">Staffetta</th><th class="p-2">Cerchia</th><th class="p-2 text-indigo-500 border-r-2 border-gray-100">B/M</th>
+                            <th class="p-2 bg-amber-50/50 text-amber-700">Isp</th><th class="p-2">Tornei</th><th class="p-2 text-indigo-500 border-r-2 border-gray-100">B/M</th>
                             
                             <th class="p-2 bg-amber-50/50 text-amber-700">Isp</th><th class="p-2">Caccia</th><th class="p-2 text-indigo-500 border-r-2 border-gray-100">B/M</th>
                             
@@ -133,12 +133,7 @@
             'LA VOCE DEL POST CRESIMA': 'La Voce del Post Cresima',
             'DISEGNA COL DITO': 'Disegna col Dito',
             'THRILLER NIGHT SHOW': 'Thriller Night Show',
-            'ROVERINO': 'Roverino',
-            'BAGHERONE': 'Bagherone',
-            'DODGEBALL': 'Dodgeball',
-            'SCALPO A SQUADRE': 'Scalpo a Squadre',
-            'STAFFETTA DELLA COLLABORAZIONE': 'Staffetta della Collaborazione',
-            'CERCHIA LA SQUADRA': 'Cerchia la Squadra',
+            'TORNEI': 'Tornei',
             'CACCIA': 'Caccia',
             'BICCHIERI IN LONTANANZA': 'Bicchieri in Lontananza',
             'GIRO DEL MONDO IN 80 MINUTI': 'Giro del Mondo in 80 Minuti',
@@ -224,7 +219,7 @@
                     let d = {
                         cocktail:0, topogun:0, bm_mer:0,
                         isp_gio:0, voce:0, disegna:0, thriller:0, bm_gio:0,
-                        isp_ven:0, roverino:0, bagherone:0, dodgeball:0, scalpo:0, staffetta:0, cerchia:0, bm_ven:0,
+                        isp_ven:0, tornei:0, bm_ven:0,
                         isp_sab:0, caccia:0, bm_sab:0,
                         isp_dom:0, bicchieri:0, giro:0, numeri:0, snake:0, spongebob:0, lancio:0, bm_dom:0
                     };
@@ -268,12 +263,7 @@
 
                             // VENERDI
                             else if (c.startsWith("ISPEZIONE CAMERA - VENERDÌ") || c.startsWith("ISPEZIONE CAMERA - VENERDI")) d.isp_ven += p;
-                            else if (c === "ROVERINO") d.roverino += p;
-                            else if (c === "BAGHERONE") d.bagherone += p;
-                            else if (c === "DODGEBALL") d.dodgeball += p;
-                            else if (c === "SCALPO A SQUADRE") d.scalpo += p;
-                            else if (c === "STAFFETTA DELLA COLLABORAZIONE") d.steffetta += p;
-                            else if (c === "CERCHIA LA SQUADRA") d.cerchia += p;
+                            else if (c === "TORNEI") d.tornei += p;
                             else if (c.startsWith("B/M - VENERDÌ") || c.startsWith("B/M - VENERDI")) d.bm_ven += p;
 
                             // SABATO
@@ -311,12 +301,7 @@
                             <td class="p-2 bg-indigo-50/30 border-r-2 border-gray-100">${colorScore(d.bm_gio)}</td>
                             
                             <td class="p-2 bg-amber-50/50 font-bold text-amber-700">${d.isp_ven}</td>
-                            <td class="p-2">${d.roverino}</td>
-                            <td class="p-2">${d.bagherone}</td>
-                            <td class="p-2">${d.dodgeball}</td>
-                            <td class="p-2">${d.scalpo}</td>
-                            <td class="p-2">${d.staffetta}</td>
-                            <td class="p-2">${d.cerchia}</td>
+                            <td class="p-2">${d.tornei}</td>
                             <td class="p-2 bg-indigo-50/30 border-r-2 border-gray-100">${colorScore(d.bm_ven)}</td>
 
                             <td class="p-2 bg-amber-50/50 font-bold text-amber-700">${d.isp_sab}</td>
