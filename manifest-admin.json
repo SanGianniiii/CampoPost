@@ -1,0 +1,21 @@
+{
+  "short_name": "Admin2026",
+  "name": "Admin - Campo Post Cresima 2026",
+  "icons": [
+    {
+      "src": "admin-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "admin-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "./admin.html",
+  "background_color": "#1e1b4b",
+  "display": "standalone",
+  "scope": "./",
+  "theme_color": "#1e1b4b"
+}
