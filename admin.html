@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="manifest" href="manifest-admin.json"> 
+    <title>Admin Dashboard - Campo Post Cresima</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; }
+        .tab-active { border-bottom: 4px solid #6366f1; color: #6366f1; font-weight: 900; }
+        .card-anim { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .glass-header { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); }
+    </style>
+</head>
+<body class="pb-24">
+
+    <header class="glass-header px-6 py-4 shadow-sm flex justify-between items-center sticky top-0 z-40">
+        <div>
+            <h1 class="font-black text-2xl tracking-tighter text-gray-900 leading-none">ADMIN <span class="text-indigo-600">PANEL</span></h1>
+            <p class="text-[10px] text-gray-400 font-black uppercase mt-1 tracking-widest">Dashboard Reportistica</p>
+        </div>
+        <button onclick="location.reload()" class="text-indigo-500 hover:text-indigo-700 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+        </button>
+    </header>
+
+    <nav class="flex bg-white mx-4 mt-6 rounded-2xl shadow-sm p-1 border border-gray-100 sticky top-20 z-30">
+        <button onclick="showTab('registro')" id="btn-registro" class="flex-1 py-3 text-[10px] tab-active uppercase tracking-tighter">Registro</button>
+        <button onclick="showTab('bonus')" id="btn-bonus" class="flex-1 py-3 text-[10px] text-gray-400 uppercase tracking-tighter">Bonus</button>
+        <button onclick="showTab('malus')" id="btn-malus" class="flex-1 py-3 text-[10px] text-gray-400 uppercase tracking-tighter">Malus</button>
+        <button onclick="showTab('ispezioni')" id="btn-ispezioni" class="flex-1 py-3 text-[10px] text-gray-400 uppercase tracking-tighter">Ispezioni</button>
+    </nav>
+
+    <main class="p-4 mt-2 max-w-lg mx-auto">
+        <section id="tab-registro" class="tab-content">
+            <input type="text" id="search-registro" oninput="filtraElementi('card-registro', this.value)" placeholder="🔍 Cerca per nominativo, causale o padrino..." class="w-full p-4 rounded-2xl shadow-sm mb-6 outline-none text-sm font-medium border border-gray-100">
+            <div id="registro-list" class="space-y-4"></div>
+        </section>
+
+        <section id="tab-bonus" class="tab-content hidden">
+            <input type="text" id="search-bonus" oninput="filtraElementi('card-bonus', this.value)" placeholder="🔍 Cerca ragazzo..." class="w-full p-4 rounded-2xl shadow-sm mb-6 outline-none text-sm font-medium border border-gray-100">
+            <div class="bg-emerald-50 rounded-2xl p-4 mb-4 text-center border border-emerald-100">
+                <span class="text-emerald-700 font-black text-xs uppercase tracking-widest">Top Bonus Individuali</span>
+            </div>
+            <div id="bonus-list" class="space-y-3"></div>
+        </section>
+
+        <section id="tab-malus" class="tab-content hidden">
+            <input type="text" id="search-malus" oninput="filtraElementi('card-malus', this.value)" placeholder="🔍 Cerca ragazzo..." class="w-full p-4 rounded-2xl shadow-sm mb-6 outline-none text-sm font-medium border border-gray-100">
+            <div class="bg-rose-50 rounded-2xl p-4 mb-4 text-center border border-rose-100">
+                <span class="text-rose-700 font-black text-xs uppercase tracking-widest">Top Malus Individuali</span>
+            </div>
+            <div id="malus-list" class="space-y-3"></div>
+        </section>
+
+        <section id="tab-ispezioni" class="tab-content hidden">
+            <input type="text" id="search-ispezioni" oninput="filtraElementi('card-ispezioni', this.value)" placeholder="🔍 Cerca camera..." class="w-full p-4 rounded-2xl shadow-sm mb-6 outline-none text-sm font-medium border border-gray-100">
+            <div class="bg-amber-50 rounded-2xl p-4 mb-4 text-center border border-amber-100">
+                <span class="text-amber-700 font-black text-xs uppercase tracking-widest">Migliori Camere</span>
+            </div>
+            <div id="ispezioni-list" class="space-y-3"></div>
+        </section>
+    </main>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDYnV7Qqj_-iPLvE-KYXT1bCRbe_4seFaw",
+            authDomain: "campopostcresima2026.firebaseapp.com",
+            projectId: "campopostcresima2026",
+            storageBucket: "campopostcresima2026.firebasestorage.app",
+            messagingSenderId: "286625257910",
+            appId: "1:286625257910:web:734565f023794171e08917"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Variabili globali per caching
+        let registriDati = [];
+        let mapRagazzi = {}; // nome lower -> intero oggetto ragazzo
+        let mapSquadre = {}; // id -> nome squadra
+
+        async function initAdminApp() {
+            Swal.fire({ title: 'Sincronizzazione...', allowOutsideClick: false, showConfirmButton: false, didOpen: () => { Swal.showLoading() } });
+
+            // 1. Carica Squadre
+            const sqSnap = await db.collection("squadre").get();
+            sqSnap.forEach(doc => { mapSquadre[doc.id] = doc.data().nome; });
+
+            // 2. Carica Ragazzi
+            const rgSnap = await db.collection("ragazzi").get();
+            rgSnap.forEach(doc => { 
+                const r = doc.data();
+                if(r.nome) mapRagazzi[r.nome.toLowerCase().trim()] = { id: doc.id, ...r };
+            });
+
+            // 3. Listener su Registro
+            db.collection("registro").orderBy("data", "desc").onSnapshot(snap => {
+                registriDati = [];
+                snap.forEach(doc => registriDati.push({ id: doc.id, ...doc.data() }));
+                aggiornaTutteLeViste();
+                Swal.close();
+            });
+        }
+
+        function aggiornaTutteLeViste() {
+            renderRegistroCompleto();
+            renderClassificaBonusMalus(true);  // Bonus
+            renderClassificaBonusMalus(false); // Malus
+            renderClassificaIspezioni();
+        }
+
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+            document.getElementById('tab-' + tabName).classList.remove('hidden');
+            document.querySelectorAll('nav button').forEach(b => b.classList.remove('tab-active', 'text-gray-400'));
+            document.getElementById('btn-' + tabName).classList.add('tab-active');
+        }
+
+        function filtraElementi(classe, query) {
+            const f = query.toLowerCase();
+            document.querySelectorAll('.' + classe).forEach(c => {
+                c.style.display = c.getAttribute('data-search').includes(f) ? "flex" : "none";
+            });
+            // Nel caso del registro le card non sono sempre in layout flex nativo, ma mantengono le regole di blocco/flex
+            if(classe === 'card-registro') {
+                document.querySelectorAll('.' + classe).forEach(c => {
+                    c.style.display = c.getAttribute('data-search').includes(f) ? "block" : "none";
+                });
+            }
+        }
+
+        // ============================
+        // LOGICA DI RENDER
+        // ============================
+
+        function renderRegistroCompleto() {
+            const list = document.getElementById('registro-list');
+            list.innerHTML = "";
+            registriDati.forEach(l => {
+                const searchString = `${l.padrino} ${l.bersaglio} ${l.causale}`.toLowerCase();
+                const btnColor = l.punti > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700';
+                
+                let timeString = "";
+                if(l.data) {
+                    const d = l.data.toDate();
+                    timeString = d.toLocaleDateString('it-IT') + " " + d.toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
+                }
+
+                list.innerHTML += `
+                    <div class="card-registro bg-white p-5 rounded-3xl shadow-sm border border-gray-100 mb-4 card-anim relative" data-search="${searchString}">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <span class="text-[9px] font-black text-gray-300 uppercase tracking-widest">${l.padrino} • ${timeString}</span>
+                                <h4 class="font-black text-gray-800 text-lg leading-tight mt-1">${l.bersaglio}</h4>
+                                <span class="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">${l.causale}</span>
+                            </div>
+                            <span class="${btnColor} px-4 py-2 rounded-2xl font-black text-lg shadow-sm">
+                                ${l.punti > 0 ? '+' : ''}${l.punti}
+                            </span>
+                        </div>
+                        <div class="flex justify-end gap-2 mt-4 pt-4 border-t border-gray-50">
+                            <button onclick="modificaRecord('${l.id}', '${l.bersaglio}', ${l.punti})" class="bg-gray-100 hover:bg-indigo-100 text-gray-600 hover:text-indigo-700 px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-colors">Modifica</button>
+                            <button onclick="eliminaRecord('${l.id}', '${l.bersaglio}', ${l.punti})" class="bg-rose-50 hover:bg-rose-100 text-rose-600 px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-colors">Elimina</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function renderClassificaBonusMalus(isBonus) {
+            const containerId = isBonus ? 'bonus-list' : 'malus-list';
+            const cardClass = isBonus ? 'card-bonus' : 'card-malus';
+            const list = document.getElementById(containerId);
+            list.innerHTML = "";
+
+            let aggregato = {};
+
+            registriDati.forEach(l => {
+                const bersaglio = (l.bersaglio || "").toLowerCase().trim();
+                const causale = (l.causale || "").toUpperCase();
+                
+                // Filtriamo solo i Bonus/Malus diretti ai ragazzi
+                if (causale.includes("B/M") && !causale.includes("ISPEZIONE")) {
+                    // Controlla se il bersaglio è un ragazzo presente in anagrafica
+                    let nomeRagazzo = null;
+                    for (let n in mapRagazzi) {
+                        if (bersaglio.includes(n)) { nomeRagazzo = mapRagazzi[n].nome; break; }
+                    }
+
+                    if (nomeRagazzo) {
+                        if (!aggregato[nomeRagazzo]) aggregato[nomeRagazzo] = { punti: 0, nome: nomeRagazzo, idSquadra: mapRagazzi[nomeRagazzo.toLowerCase()].Idsquadra };
+                        
+                        if (isBonus && l.punti > 0) aggregato[nomeRagazzo].punti += l.punti;
+                        if (!isBonus && l.punti < 0) aggregato[nomeRagazzo].punti += l.punti;
+                    }
+                }
+            });
+
+            // Converti in array e ordina
+            let arrayClassifica = Object.values(aggregato);
+            if(isBonus) {
+                arrayClassifica.sort((a, b) => b.punti - a.punti); // Dal più alto
+            } else {
+                arrayClassifica.sort((a, b) => a.punti - b.punti); // Dal più negativo
+            }
+
+            arrayClassifica.forEach((r, i) => {
+                if (r.punti === 0) return; // Nascondi chi sta a 0
+                const nomeSquadra = mapSquadre[r.idSquadra] || 'N.D.';
+                const searchString = `${r.nome} ${nomeSquadra}`.toLowerCase();
+                const textColor = isBonus ? 'text-emerald-600' : 'text-rose-600';
+                const bgColor = isBonus ? 'bg-emerald-50' : 'bg-rose-50';
+
+                list.innerHTML += `
+                    <div class="${cardClass} bg-white p-4 rounded-2xl shadow-sm border border-gray-50 flex items-center justify-between card-anim" data-search="${searchString}">
+                        <div class="flex items-center gap-4">
+                            <span class="font-black text-gray-300 text-xl w-6 text-center">#${i+1}</span>
+                            <div>
+                                <span class="font-bold text-gray-800 text-sm block">${r.nome}</span>
+                                <span class="text-[9px] font-black text-gray-400 uppercase tracking-widest">${nomeSquadra}</span>
+                            </div>
+                        </div>
+                        <span class="${bgColor} ${textColor} px-3 py-2 rounded-xl font-black text-sm">
+                            ${r.punti > 0 ? '+' : ''}${r.punti}
+                        </span>
+                    </div>
+                `;
+            });
+        }
+
+        function renderClassificaIspezioni() {
+            const list = document.getElementById('ispezioni-list');
+            list.innerHTML = "";
+            let aggregato = {};
+
+            registriDati.forEach(l => {
+                const causale = (l.causale || "").toUpperCase();
+                const bersaglio = (l.bersaglio || "");
+
+                if (causale.includes("ISPEZIONE CAMERA")) {
+                    // Estrai il numero camera dalla stringa "Cam X (Nome)"
+                    const match = bersaglio.match(/Cam (\d+)/i);
+                    if (match) {
+                        const numCam = match[1];
+                        if (!aggregato[numCam]) aggregato[numCam] = 0;
+                        aggregato[numCam] += l.punti;
+                    }
+                }
+            });
+
+            let arrayClassifica = Object.keys(aggregato).map(k => ({ camera: k, punti: aggregato[k] }));
+            arrayClassifica.sort((a, b) => b.punti - a.punti);
+
+            arrayClassifica.forEach((c, i) => {
+                const searchString = `camera ${c.camera}`;
+                list.innerHTML += `
+                    <div class="card-ispezioni bg-white p-4 rounded-2xl shadow-sm border border-gray-50 flex items-center justify-between card-anim" data-search="${searchString}">
+                        <div class="flex items-center gap-4">
+                            <span class="font-black text-gray-300 text-xl w-6 text-center">#${i+1}</span>
+                            <span class="font-black text-gray-800 text-sm uppercase">Camera ${c.camera}</span>
+                        </div>
+                        <span class="bg-amber-50 text-amber-700 px-3 py-2 rounded-xl font-black text-sm">
+                            ${c.punti > 0 ? '+' : ''}${c.punti}
+                        </span>
+                    </div>
+                `;
+            });
+        }
+
+
+        // ============================
+        // LOGICA DI AGGIORNAMENTO
+        // ============================
+
+        // Funzione core per trovare a chi assegnare la differenza punti
+        function trovaIdSquadraDaBersaglio(bersaglioRaw) {
+            const b = bersaglioRaw.toLowerCase();
+            
+            // Caso 1: Ispezione "Cam 4 (Nome)"
+            if (b.includes("cam ")) {
+                const match = bersaglioRaw.match(/\((.*?)\)/);
+                if (match) {
+                    const nomeInCam = match[1].trim().toLowerCase();
+                    for(let nome in mapRagazzi) {
+                        if (nomeInCam.includes(nome)) return mapRagazzi[nome].Idsquadra;
+                    }
+                }
+            }
+            
+            // Caso 2: Ragazzo singolo
+            for (let nome in mapRagazzi) {
+                if (b.includes(nome)) return mapRagazzi[nome].Idsquadra;
+            }
+
+            // Caso 3: Intera Squadra
+            for (let id in mapSquadre) {
+                if (b.includes(mapSquadre[id].toLowerCase()) || b.includes(id.toLowerCase())) return id;
+            }
+
+            return null;
+        }
+
+        async function eliminaRecord(idRecord, bersaglio, puntiStorici) {
+            const { isConfirmed } = await Swal.fire({
+                title: 'Sei sicuro?',
+                text: "Eliminando questo record, i punti verranno sottratti dalla squadra di appartenenza.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#9ca3af',
+                confirmButtonText: 'Sì, elimina'
+            });
+
+            if (!isConfirmed) return;
+
+            try {
+                const idSquadra = trovaIdSquadraDaBersaglio(bersaglio);
+                if (idSquadra) {
+                    // Ripristino i punti (se storicamente erano +10, aggiungo -10)
+                    await db.collection("squadre").doc(idSquadra).update({
+                        punti: firebase.firestore.FieldValue.increment(-puntiStorici)
+                    });
+                }
+                
+                await db.collection("registro").doc(idRecord).delete();
+                Swal.fire({ title: 'Eliminato!', icon: 'success', timer: 1500, showConfirmButton: false });
+            } catch(e) {
+                Swal.fire('Errore', e.message, 'error');
+            }
+        }
+
+        async function modificaRecord(idRecord, bersaglio, puntiStorici) {
+            const { value: nuoviPunti } = await Swal.fire({
+                title: 'Modifica Punti',
+                input: 'number',
+                inputValue: puntiStorici,
+                showCancelButton: true,
+                confirmButtonColor: '#4f46e5'
+            });
+
+            if (nuoviPunti === undefined || nuoviPunti === "" || Number(nuoviPunti) === puntiStorici) return;
+
+            const diff = Number(nuoviPunti) - puntiStorici;
+
+            try {
+                const idSquadra = trovaIdSquadraDaBersaglio(bersaglio);
+                if (idSquadra) {
+                    // Applica solo la differenza alla squadra (es: se da 10 passa a 15, aggiunge +5)
+                    await db.collection("squadre").doc(idSquadra).update({
+                        punti: firebase.firestore.FieldValue.increment(diff)
+                    });
+                }
+
+                await db.collection("registro").doc(idRecord).update({
+                    punti: Number(nuoviPunti)
+                });
+
+                Swal.fire({ title: 'Modificato!', icon: 'success', timer: 1500, showConfirmButton: false });
+            } catch(e) {
+                Swal.fire('Errore', e.message, 'error');
+            }
+        }
+
+        window.onload = initAdminApp;
+    </script>
+  <script>
+        // Registrazione del Service Worker per rendere l'app installabile
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('./sw.js').then(function(registration) {
+                    console.log('ServiceWorker registrazione completata con successo con scope: ', registration.scope);
+                }, function(err) {
+                    console.log('ServiceWorker registrazione fallita: ', err);
+                });
+            });
+        }
+    </script>
+</body>
+</html>
