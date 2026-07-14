@@ -62,7 +62,7 @@
             </div>
         </section>
 
-<section id="tab-tabellone" class="tab-content hidden">
+        <section id="tab-tabellone" class="tab-content hidden">
             <div class="mb-4 flex flex-col items-center">
                 <button onclick="cambiaGiorno()" id="label-giorno" class="bg-indigo-600 text-white px-6 py-2 rounded-full font-black text-[10px] uppercase tracking-widest shadow-lg transition-all"></button>
             </div>
@@ -79,11 +79,8 @@
                         </tr>
                         <tr class="text-gray-400 font-bold uppercase tracking-tighter border-b text-[8px] bg-white">
                             <th class="p-3 sticky-col border-r-2 border-gray-100 z-20 text-gray-800">Squadre</th>
-                            
                             <th class="p-2">Cocktail</th><th class="p-2">Topogun</th><th class="p-2 text-indigo-500 border-r-2 border-gray-100">B/M</th>
-                            
                             <th class="p-2 bg-amber-50/50 text-amber-700">Isp</th><th class="p-2">La Voce</th><th class="p-2">Disegna</th><th class="p-2">Thriller</th><th class="p-2 text-indigo-500 border-r-2 border-gray-100">B/M</th>
-                            
                             <th class="p-2 bg-amber-50/50 text-amber-700">Isp</th>
                             <th class="p-2">Roverino</th>
                             <th class="p-2">Bagherone</th>
@@ -92,9 +89,7 @@
                             <th class="p-2">Staffetta</th>
                             <th class="p-2">Cerchia</th>
                             <th class="p-2 text-indigo-500 border-r-2 border-gray-100">B/M</th>
-                            
                             <th class="p-2 bg-amber-50/50 text-amber-700">Isp</th><th class="p-2">Caccia</th><th class="p-2 text-indigo-500 border-r-2 border-gray-100">B/M</th>
-                            
                             <th class="p-2 bg-amber-50/50 text-amber-700">Isp</th><th class="p-2">Bicchieri</th><th class="p-2">Giro 80</th><th class="p-2">Numeri</th><th class="p-2">Snake</th><th class="p-2">Spongebob</th><th class="p-2">Lancio</th><th class="p-2 text-indigo-500">B/M</th>
                         </tr>
                     </thead>
@@ -167,7 +162,8 @@
                 startApp();
             }
         }
-        function login() { const val = document.getElementById('select-padrino').value; if(val) { localStorage.setItem('padrino', val); location.reload(); } }
+        function login() { const val = document.getElementById('select-padrino').value;
+        if(val) { localStorage.setItem('padrino', val); location.reload(); } }
         function logout() { localStorage.removeItem('padrino'); location.reload(); }
 
         function showTab(tabName) {
@@ -184,7 +180,22 @@
             db.collection("squadre").orderBy("punti", "desc").onSnapshot(snap => {
                 const list = document.getElementById('classifica-list');
                 list.innerHTML = "";
-                const colorClasses = { 'blue': 'bg-blue-500', 'red': 'bg-red-500', 'green': 'bg-green-500', 'yellow': 'bg-yellow-500', 'purple': 'bg-purple-500', 'arcobaleno': 'bg-gradient-to-r from-red-500 via-yellow-400 via-green-500 via-blue-500 to-purple-600' };
+                
+                // --- MODIFICA TAVOLOZZA COLORI ---
+                const colorClasses = { 
+                    'blu': 'bg-blue-500', 
+                    'rosa': 'bg-pink-400', 
+                    'biancogrigio': 'bg-gray-300', 
+                    'colorcacca': 'bg-amber-800', 
+                    'arancione': 'bg-orange-500', 
+                    'nero': 'bg-gray-900', 
+                    'verde': 'bg-green-500', 
+                    'giallo': 'bg-yellow-500', 
+                    'marrone': 'bg-amber-700', 
+                    'rosso': 'bg-red-500', 
+                    'viola': 'bg-purple-500' 
+                };
+
                 snap.forEach(doc => {
                     const s = doc.data();
                     list.innerHTML += `<div class="${colorClasses[s.colore] || 'bg-gray-500'} p-5 rounded-[2rem] flex justify-between items-center shadow-md card-anim"><span class="font-bold text-white uppercase tracking-tighter">${s.nome}</span><span class="text-3xl font-black text-white">${s.punti}</span></div>`;
@@ -205,7 +216,6 @@ async function renderTabellone() {
             const body = document.getElementById('tabellone-body');
             const labelGiorno = document.getElementById('label-giorno');
             if (labelGiorno) labelGiorno.innerText = `GIORNO: ${GIORNI[indiceGiorno]} (Clicca qui)`;
-
             // Aggiornato colspan a 27 per via delle nuove colonne
             body.innerHTML = "<tr><td colspan='27' class='p-10 text-center animate-pulse text-gray-400'>Sincronizzazione dati in corso...</td></tr>";
 
@@ -223,7 +233,6 @@ async function renderTabellone() {
                 });
 
                 let html = "";
-
                 sqSnap.forEach(sqDoc => {
                     const sq = sqDoc.data();
                     const sqId = sqDoc.id.trim();
@@ -244,7 +253,7 @@ async function renderTabellone() {
 
                         const bersaglioLower = r.bersaglio.toLowerCase();
                         const nomeSqLower = nomeSq.toLowerCase();
-                        
+
                         let idSquadraTrovato = null;
                         for (let nomeRagazzo in mappaRagazzoSquadra) {
                             if (bersaglioLower.includes(nomeRagazzo)) {
@@ -254,7 +263,7 @@ async function renderTabellone() {
                         }
 
                         const appartiene = 
-                            bersaglioLower.includes(nomeSqLower) || 
+                            bersaglioLower.includes(nomeSqLower) ||
                             bersaglioLower.includes(sqId.toLowerCase()) || 
                             idSquadraTrovato === sqId ||
                             idSquadraTrovato === nomeSq;
@@ -267,14 +276,12 @@ async function renderTabellone() {
                             if (c === "COCKTAIL SBAGLIATO") d.cocktail += p;
                             else if (c === "TOPOGUN BALL") d.topogun += p;
                             else if (c.startsWith("B/M - MERCOLEDÌ") || c.startsWith("B/M - MERCOLEDI")) d.bm_mer += p;
-                            
                             // GIOVEDI
                             else if (c.startsWith("ISPEZIONE CAMERA - GIOVEDÌ") || c.startsWith("ISPEZIONE CAMERA - GIOVEDI")) d.isp_gio += p;
                             else if (c === "LA VOCE DEL POST CRESIMA") d.voce += p;
                             else if (c === "DISEGNA COL DITO") d.disegna += p;
                             else if (c === "THRILLER NIGHT SHOW") d.thriller += p;
                             else if (c.startsWith("B/M - GIOVEDÌ") || c.startsWith("B/M - GIOVEDI")) d.bm_gio += p;
-
                             // VENERDI (Modificato con i giochi singoli)
                             else if (c.startsWith("ISPEZIONE CAMERA - VENERDÌ") || c.startsWith("ISPEZIONE CAMERA - VENERDI")) d.isp_ven += p;
                             else if (c === "ROVERINO") d.roverino += p;
@@ -284,12 +291,10 @@ async function renderTabellone() {
                             else if (c === "STAFFETTA DELLA COLLABORAZIONE") d.staffetta += p;
                             else if (c === "CERCHIA LA SQUADRA") d.cerchia += p;
                             else if (c.startsWith("B/M - VENERDÌ") || c.startsWith("B/M - VENERDI")) d.bm_ven += p;
-
                             // SABATO
                             else if (c.startsWith("ISPEZIONE CAMERA - SABATO")) d.isp_sab += p;
                             else if (c === "CACCIA") d.caccia += p;
                             else if (c.startsWith("B/M - SABATO")) d.bm_sab += p;
-
                             // DOMENICA
                             else if (c.startsWith("ISPEZIONE CAMERA - DOMENICA")) d.isp_dom += p;
                             else if (c === "BICCHIERI IN LONTANANZA") d.bicchieri += p;
@@ -309,17 +314,14 @@ async function renderTabellone() {
                     html += `
                         <tr class="border-b last:border-0 hover:bg-gray-50">
                             <td class="p-3 font-bold text-gray-800 sticky-col border-r-2 border-gray-100 shadow-sm bg-white">${nomeSq}</td>
-                            
                             <td class="p-2">${d.cocktail}</td>
                             <td class="p-2">${d.topogun}</td>
                             <td class="p-2 bg-indigo-50/30 border-r-2 border-gray-100">${colorScore(d.bm_mer)}</td>
-                            
                             <td class="p-2 bg-amber-50/50 font-bold text-amber-700">${d.isp_gio}</td>
                             <td class="p-2">${d.voce}</td>
                             <td class="p-2">${d.disegna}</td>
                             <td class="p-2">${d.thriller}</td>
                             <td class="p-2 bg-indigo-50/30 border-r-2 border-gray-100">${colorScore(d.bm_gio)}</td>
-                            
                             <td class="p-2 bg-amber-50/50 font-bold text-amber-700">${d.isp_ven}</td>
                             <td class="p-2">${d.roverino}</td>
                             <td class="p-2">${d.bagherone}</td>
@@ -328,11 +330,9 @@ async function renderTabellone() {
                             <td class="p-2">${d.staffetta}</td>
                             <td class="p-2">${d.cerchia}</td>
                             <td class="p-2 bg-indigo-50/30 border-r-2 border-gray-100">${colorScore(d.bm_ven)}</td>
-
                             <td class="p-2 bg-amber-50/50 font-bold text-amber-700">${d.isp_sab}</td>
                             <td class="p-2">${d.caccia}</td>
                             <td class="p-2 bg-indigo-50/30 border-r-2 border-gray-100">${colorScore(d.bm_sab)}</td>
-
                             <td class="p-2 bg-amber-50/50 font-bold text-amber-700">${d.isp_dom}</td>
                             <td class="p-2">${d.bicchieri}</td>
                             <td class="p-2">${d.giro}</td>
@@ -362,7 +362,22 @@ async function renderTabellone() {
             const container = document.getElementById('squadre-list');
             const sqSnap = await db.collection("squadre").get();
             const rgSnap = await db.collection("ragazzi").get();
-            const colorClasses = { 'blue': 'bg-blue-500', 'red': 'bg-red-500', 'green': 'bg-green-500', 'yellow': 'bg-yellow-500', 'purple': 'bg-purple-500', 'arcobaleno': 'bg-gradient-to-r from-red-500 via-yellow-400 via-green-500 via-blue-500 to-purple-600' };
+
+            // --- MODIFICA TAVOLOZZA COLORI ANCHE QUI ---
+            const colorClasses = { 
+                'blu': 'bg-blue-500', 
+                'rosa': 'bg-pink-400', 
+                'biancogrigio': 'bg-gray-300', 
+                'colorcacca': 'bg-amber-800', 
+                'arancione': 'bg-orange-500', 
+                'nero': 'bg-gray-900', 
+                'verde': 'bg-green-500', 
+                'giallo': 'bg-yellow-500', 
+                'marrone': 'bg-amber-700', 
+                'rosso': 'bg-red-500', 
+                'viola': 'bg-purple-500' 
+            };
+
             container.innerHTML = "";
             sqSnap.forEach(sqDoc => {
                 const sq = sqDoc.data(); const sqId = sqDoc.id;
@@ -381,6 +396,7 @@ async function renderTabellone() {
         async function renderCamere() {
             const container = document.getElementById('camere-list');
             const rgSnap = await db.collection("ragazzi").get();
+
             container.innerHTML = "";
             const camere = {};
 
@@ -390,27 +406,31 @@ async function renderTabellone() {
                 camere[r.camera].push({ id: doc.id, ...r }); 
             });
 
-            Object.keys(camere).sort((a,b)=>a-b).forEach(num => {
+            // --- MODIFICA ORDINAMENTO TESTUALE ---
+            Object.keys(camere).sort((a,b) => String(a).localeCompare(String(b))).forEach(num => {
                 let rHtml = "";
                 let searchData = "camera " + num; 
 
                 camere[num].forEach(r => { 
                     searchData += " " + r.nome.toLowerCase(); 
+                    
+                    // --- MODIFICA BOTTONE ISPEZIONE SINGOLA (num come stringa) ---
                     rHtml += `
                         <div class="flex justify-between items-center p-3 bg-gray-50 rounded-xl mb-2">
                             <span class="text-sm font-bold text-gray-700">${r.nome}</span>
                             <div class="flex items-center gap-2">
                                 <span class="text-[9px] font-black text-gray-300 uppercase">${r.Idsquadra}</span>
-                                <button onclick="flussoPuntiSingoloIspezione('${r.Idsquadra}', '${r.nome}', ${num})" class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded text-[10px] font-black uppercase shadow-sm">ASSEGNA ISPEZIONE</button>
+                                <button onclick="flussoPuntiSingoloIspezione('${r.Idsquadra}', '${r.nome}', '${num}')" class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded text-[10px] font-black uppercase shadow-sm">ASSEGNA ISPEZIONE</button>
                             </div>
                         </div>`; 
                 });
 
+                // --- MODIFICA BOTTONE ISPEZIONE CAMERA (num come stringa) ---
                 container.innerHTML += `
                     <div class="card-camera bg-white p-5 rounded-[2.5rem] shadow-sm border border-gray-100 mb-6 card-anim" data-search="${searchData}">
                         <div class="flex justify-between items-center mb-4 border-b border-gray-50 pb-3">
                             <h3 class="font-black text-lg text-gray-800 tracking-tighter">CAMERA ${num}</h3>
-                            <button onclick="flussoPuntiCamera(${num})" class="bg-indigo-600 text-white text-[9px] font-black px-4 py-2 rounded-full uppercase shadow-md">ISPEZIONE</button>
+                            <button onclick="flussoPuntiCamera('${num}')" class="bg-indigo-600 text-white text-[9px] font-black px-4 py-2 rounded-full uppercase shadow-md">ISPEZIONE</button>
                         </div>
                         ${rHtml}
                     </div>`;
@@ -430,7 +450,6 @@ async function renderTabellone() {
         }
 
        async function flussoPuntiSquadraGioco(idSquadra, nomeBersaglio) {
-            // 1. Scelta del Gioco (Spostato all'inizio)
             const { value: giocoSelezionato } = await Swal.fire({ 
                 title: 'Seleziona il Gioco o Causale', 
                 input: 'select', 
@@ -440,7 +459,6 @@ async function renderTabellone() {
             });
             if (!giocoSelezionato) return;
 
-            // 2. Chiede la motivazione subito dopo, solo se è un B/M generico
             let motivazione = "";
             if (giocoSelezionato === 'B/M') {
                 const { value: m } = await Swal.fire({ title: 'Motivazione', input: 'text', inputPlaceholder: 'Es: Riordino tavoli, Comportamento...' });
@@ -448,7 +466,6 @@ async function renderTabellone() {
                 motivazione = m;
             }
 
-            // 3. Scelta Bonus/Malus (Ti mostra anche quale gioco hai scelto per sicurezza)
             const { value: tipo } = await Swal.fire({ 
                 title: 'Azione per ' + nomeBersaglio, 
                 text: `Stai assegnando punti per: ${GIOCHI_LIST[giocoSelezionato]}`,
@@ -460,7 +477,6 @@ async function renderTabellone() {
             });
             if (tipo === undefined) return;
             
-            // 4. Inserimento Punteggio
             const { value: q } = await Swal.fire({ title: 'Punteggio', input: 'number' });
             if (!q) return;
 
@@ -480,7 +496,8 @@ async function renderTabellone() {
         }
 
         async function flussoPuntiCamera(numCamera) {
-            const snap = await db.collection("ragazzi").where("camera", "==", Number(numCamera)).get();
+            // --- MODIFICA QUERY PER TROVARE LA CAMERA COME TESTO ---
+            const snap = await db.collection("ragazzi").where("camera", "==", String(numCamera)).get();
             let ragazzi = [];
             snap.forEach(doc => ragazzi.push({ id: doc.id, ...doc.data() }));
 
@@ -529,7 +546,7 @@ async function renderTabellone() {
             if (!q) return;
             
             const val = tipo ? Number(q) : -Math.abs(Number(q));
-
+            
             ragazziSelezionati.forEach(r => {
                 eseguiAggiornamento(r.Idsquadra, `Cam ${numCamera} (${r.nome})`, val, "Ispezione Camera");
             });
@@ -562,7 +579,7 @@ async function renderTabellone() {
                     timer: 2000,
                     showConfirmButton: false
                 });
-                
+
                 if(document.getElementById('tab-tabellone').classList.contains('hidden') === false) renderTabellone();
             } catch (e) { Swal.fire('Errore!', e.message, 'error'); }
         }
