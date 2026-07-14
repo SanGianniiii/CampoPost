@@ -123,11 +123,9 @@
         
         let CURRENT_USER = localStorage.getItem('padrino');
         
-        // Nuova gestione dei giorni
         const GIORNI = ['MERCOLEDÌ', 'GIOVEDÌ', 'VENERDÌ', 'SABATO', 'DOMENICA'];
         let indiceGiorno = parseInt(localStorage.getItem('indice_giorno')) || 0;
 
-       // Nuova lista giochi aggiornata con i giochi del venerdì
         const GIOCHI_LIST = {
             'B/M': '⭐ BONUS/ MALUS A INTERA SQUADRA',
             'COCKTAIL SBAGLIATO': 'Cocktail Sbagliato',
@@ -148,6 +146,15 @@
             'SNAKE UMANO': 'Snake Umano',
             'SPONGEBOB': 'Spongebob',
             "LANCIO DELL'ACQUA": "Lancio dell'Acqua"
+        };
+
+        // Mappa Colori Centralizzata
+        const colorClasses = { 
+            'azzurro': 'bg-sky-400', 'rosa': 'bg-pink-400', 'biancogrigio': 'bg-gray-300',
+            'colorcacca': 'bg-amber-800', 'arancione': 'bg-orange-500', 'nero': 'bg-gray-900',
+            'blunotte': 'bg-blue-900', 'verde': 'bg-green-500', 'giallo': 'bg-yellow-400',
+            'marrone': 'bg-amber-700', 'rosso': 'bg-red-500', 'viola': 'bg-purple-500',
+            'fragola': 'bg-rose-500', 'blu': 'bg-blue-500'
         };
 
         async function initLogin() {
@@ -181,23 +188,6 @@
                 const list = document.getElementById('classifica-list');
                 list.innerHTML = "";
                 
-                // --- MODIFICA TAVOLOZZA COLORI ---
-                const colorClasses = { 
-    'azzurro': 'bg-sky-400',
-    'rosa': 'bg-pink-400',
-    'biancogrigio': 'bg-gray-300',
-    'colorcacca': 'bg-amber-800',
-    'arancione': 'bg-orange-500',
-    'nero': 'bg-gray-900',
-    'blunotte': 'bg-blue-900',
-    'verde': 'bg-green-500',
-    'giallo': 'bg-yellow-400',
-    'marrone': 'bg-amber-700',
-    'rosso': 'bg-red-500',
-    'viola': 'bg-purple-500',
-    'fragola': 'bg-rose-500',
-    'blu': 'bg-blue-500'
-};
                 snap.forEach(doc => {
                     const s = doc.data();
                     list.innerHTML += `<div class="${colorClasses[s.colore] || 'bg-gray-500'} p-5 rounded-[2rem] flex justify-between items-center shadow-md card-anim"><span class="font-bold text-white uppercase tracking-tighter">${s.nome}</span><span class="text-3xl font-black text-white">${s.punti}</span></div>`;
@@ -214,15 +204,16 @@
             });
         }
 
-async function renderTabellone() {
+        async function renderTabellone() {
             const body = document.getElementById('tabellone-body');
             const labelGiorno = document.getElementById('label-giorno');
             if (labelGiorno) labelGiorno.innerText = `GIORNO: ${GIORNI[indiceGiorno]} (Clicca qui)`;
-            // Aggiornato colspan a 27 per via delle nuove colonne
+            
             body.innerHTML = "<tr><td colspan='27' class='p-10 text-center animate-pulse text-gray-400'>Sincronizzazione dati in corso...</td></tr>";
 
             try {
-                const sqSnap = await db.collection("squadre").orderBy("nome").get();
+                // Modificato l'ordine: classifica decrescente per punti
+                const sqSnap = await db.collection("squadre").orderBy("punti", "desc").get();
                 const regSnap = await db.collection("registro").get();
                 const rgSnap = await db.collection("ragazzi").get();
 
@@ -240,7 +231,9 @@ async function renderTabellone() {
                     const sqId = sqDoc.id.trim();
                     const nomeSq = (sq.nome || "").trim();
                     
-                    // Struttura dati aggiornata con i singoli giochi del venerdì
+                    const coloreSquadra = sq.colore || 'biancogrigio';
+                    const bgClass = colorClasses[coloreSquadra] || 'bg-gray-200';
+                    
                     let d = {
                         cocktail:0, topogun:0, bm_mer:0,
                         isp_gio:0, voce:0, disegna:0, thriller:0, bm_gio:0,
@@ -264,27 +257,20 @@ async function renderTabellone() {
                             }
                         }
 
-                        const appartiene = 
-                            bersaglioLower.includes(nomeSqLower) ||
-                            bersaglioLower.includes(sqId.toLowerCase()) || 
-                            idSquadraTrovato === sqId ||
-                            idSquadraTrovato === nomeSq;
+                        const appartiene = bersaglioLower.includes(nomeSqLower) || bersaglioLower.includes(sqId.toLowerCase()) || idSquadraTrovato === sqId || idSquadraTrovato === nomeSq;
 
                         if (appartiene) {
                             const c = (r.causale || "").toUpperCase().trim();
                             const p = Number(r.punti) || 0;
 
-                            // MERCOLEDI
                             if (c === "COCKTAIL SBAGLIATO") d.cocktail += p;
                             else if (c === "TOPOGUN BALL") d.topogun += p;
                             else if (c.startsWith("B/M - MERCOLEDÌ") || c.startsWith("B/M - MERCOLEDI")) d.bm_mer += p;
-                            // GIOVEDI
                             else if (c.startsWith("ISPEZIONE CAMERA - GIOVEDÌ") || c.startsWith("ISPEZIONE CAMERA - GIOVEDI")) d.isp_gio += p;
                             else if (c === "LA VOCE DEL POST CRESIMA") d.voce += p;
                             else if (c === "DISEGNA COL DITO") d.disegna += p;
                             else if (c === "THRILLER NIGHT SHOW") d.thriller += p;
                             else if (c.startsWith("B/M - GIOVEDÌ") || c.startsWith("B/M - GIOVEDI")) d.bm_gio += p;
-                            // VENERDI (Modificato con i giochi singoli)
                             else if (c.startsWith("ISPEZIONE CAMERA - VENERDÌ") || c.startsWith("ISPEZIONE CAMERA - VENERDI")) d.isp_ven += p;
                             else if (c === "ROVERINO") d.roverino += p;
                             else if (c === "BAGHERONE") d.bagherone += p;
@@ -293,11 +279,9 @@ async function renderTabellone() {
                             else if (c === "STAFFETTA DELLA COLLABORAZIONE") d.staffetta += p;
                             else if (c === "CERCHIA LA SQUADRA") d.cerchia += p;
                             else if (c.startsWith("B/M - VENERDÌ") || c.startsWith("B/M - VENERDI")) d.bm_ven += p;
-                            // SABATO
                             else if (c.startsWith("ISPEZIONE CAMERA - SABATO")) d.isp_sab += p;
                             else if (c === "CACCIA") d.caccia += p;
                             else if (c.startsWith("B/M - SABATO")) d.bm_sab += p;
-                            // DOMENICA
                             else if (c.startsWith("ISPEZIONE CAMERA - DOMENICA")) d.isp_dom += p;
                             else if (c === "BICCHIERI IN LONTANANZA") d.bicchieri += p;
                             else if (c === "GIRO DEL MONDO IN 80 MINUTI") d.giro += p;
@@ -309,13 +293,13 @@ async function renderTabellone() {
                         }
                     });
 
-                    // Funzione Helper per colorare rosso/verde
                     const colorScore = (val) => val > 0 ? `<span class="text-emerald-500 font-black">+${val}</span>` : (val < 0 ? `<span class="text-rose-500 font-black">${val}</span>` : val);
 
-                    // Generazione HTML delle righe con le nuove colonne del venerdì
                     html += `
                         <tr class="border-b last:border-0 hover:bg-gray-50">
-                            <td class="p-3 font-bold text-gray-800 sticky-col border-r-2 border-gray-100 shadow-sm bg-white">${nomeSq}</td>
+                            <td class="p-3 font-black text-white ${bgClass} sticky-col border-r-2 border-white shadow-sm uppercase tracking-tighter">
+                                ${nomeSq}
+                            </td>
                             <td class="p-2">${d.cocktail}</td>
                             <td class="p-2">${d.topogun}</td>
                             <td class="p-2 bg-indigo-50/30 border-r-2 border-gray-100">${colorScore(d.bm_mer)}</td>
@@ -347,7 +331,6 @@ async function renderTabellone() {
                 });
                 
                 body.innerHTML = html;
-
             } catch (error) {
                 console.error("Errore:", error);
                 body.innerHTML = "<tr><td colspan='27' class='p-5 text-red-500'>Errore caricamento. Controlla la console.</td></tr>";
@@ -364,24 +347,6 @@ async function renderTabellone() {
             const container = document.getElementById('squadre-list');
             const sqSnap = await db.collection("squadre").get();
             const rgSnap = await db.collection("ragazzi").get();
-
-            // --- MODIFICA TAVOLOZZA COLORI ANCHE QUI ---
-           const colorClasses = { 
-    'azzurro': 'bg-sky-400',
-    'rosa': 'bg-pink-400',
-    'biancogrigio': 'bg-gray-300',
-    'colorcacca': 'bg-amber-800',
-    'arancione': 'bg-orange-500',
-    'nero': 'bg-gray-900',
-    'blunotte': 'bg-blue-900',
-    'verde': 'bg-green-500',
-    'giallo': 'bg-yellow-400',
-    'marrone': 'bg-amber-700',
-    'rosso': 'bg-red-500',
-    'viola': 'bg-purple-500',
-    'fragola': 'bg-rose-500',
-    'blu': 'bg-blue-500'
-};
 
             container.innerHTML = "";
             sqSnap.forEach(sqDoc => {
@@ -411,7 +376,7 @@ async function renderTabellone() {
                 camere[r.camera].push({ id: doc.id, ...r }); 
             });
 
-            // --- MODIFICA ORDINAMENTO TESTUALE ---
+            // Ordinamento Testuale
             Object.keys(camere).sort((a,b) => String(a).localeCompare(String(b))).forEach(num => {
                 let rHtml = "";
                 let searchData = "camera " + num; 
@@ -419,7 +384,6 @@ async function renderTabellone() {
                 camere[num].forEach(r => { 
                     searchData += " " + r.nome.toLowerCase(); 
                     
-                    // --- MODIFICA BOTTONE ISPEZIONE SINGOLA (num come stringa) ---
                     rHtml += `
                         <div class="flex justify-between items-center p-3 bg-gray-50 rounded-xl mb-2">
                             <span class="text-sm font-bold text-gray-700">${r.nome}</span>
@@ -430,7 +394,6 @@ async function renderTabellone() {
                         </div>`; 
                 });
 
-                // --- MODIFICA BOTTONE ISPEZIONE CAMERA (num come stringa) ---
                 container.innerHTML += `
                     <div class="card-camera bg-white p-5 rounded-[2.5rem] shadow-sm border border-gray-100 mb-6 card-anim" data-search="${searchData}">
                         <div class="flex justify-between items-center mb-4 border-b border-gray-50 pb-3">
@@ -501,7 +464,7 @@ async function renderTabellone() {
         }
 
         async function flussoPuntiCamera(numCamera) {
-            // --- MODIFICA QUERY PER TROVARE LA CAMERA COME TESTO ---
+            // Modifica Query: Camera cercata come Stringa
             const snap = await db.collection("ragazzi").where("camera", "==", String(numCamera)).get();
             let ragazzi = [];
             snap.forEach(doc => ragazzi.push({ id: doc.id, ...doc.data() }));
