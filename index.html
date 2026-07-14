@@ -183,19 +183,21 @@
                 
                 // --- MODIFICA TAVOLOZZA COLORI ---
                 const colorClasses = { 
-                    'blu': 'bg-blue-500', 
-                    'rosa': 'bg-pink-400', 
-                    'biancogrigio': 'bg-gray-300', 
-                    'colorcacca': 'bg-amber-800', 
-                    'arancione': 'bg-orange-500', 
-                    'nero': 'bg-gray-900', 
-                    'verde': 'bg-green-500', 
-                    'giallo': 'bg-yellow-500', 
-                    'marrone': 'bg-amber-700', 
-                    'rosso': 'bg-red-500', 
-                    'viola': 'bg-purple-500' 
-                };
-
+    'azzurro': 'bg-sky-400',
+    'rosa': 'bg-pink-400',
+    'biancogrigio': 'bg-gray-300',
+    'colorcacca': 'bg-amber-800',
+    'arancione': 'bg-orange-500',
+    'nero': 'bg-gray-900',
+    'blunotte': 'bg-blue-900',
+    'verde': 'bg-green-500',
+    'giallo': 'bg-yellow-400',
+    'marrone': 'bg-amber-700',
+    'rosso': 'bg-red-500',
+    'viola': 'bg-purple-500',
+    'fragola': 'bg-rose-500',
+    'blu': 'bg-blue-500'
+};
                 snap.forEach(doc => {
                     const s = doc.data();
                     list.innerHTML += `<div class="${colorClasses[s.colore] || 'bg-gray-500'} p-5 rounded-[2rem] flex justify-between items-center shadow-md card-anim"><span class="font-bold text-white uppercase tracking-tighter">${s.nome}</span><span class="text-3xl font-black text-white">${s.punti}</span></div>`;
@@ -364,19 +366,22 @@ async function renderTabellone() {
             const rgSnap = await db.collection("ragazzi").get();
 
             // --- MODIFICA TAVOLOZZA COLORI ANCHE QUI ---
-            const colorClasses = { 
-                'blu': 'bg-blue-500', 
-                'rosa': 'bg-pink-400', 
-                'biancogrigio': 'bg-gray-300', 
-                'colorcacca': 'bg-amber-800', 
-                'arancione': 'bg-orange-500', 
-                'nero': 'bg-gray-900', 
-                'verde': 'bg-green-500', 
-                'giallo': 'bg-yellow-500', 
-                'marrone': 'bg-amber-700', 
-                'rosso': 'bg-red-500', 
-                'viola': 'bg-purple-500' 
-            };
+           const colorClasses = { 
+    'azzurro': 'bg-sky-400',
+    'rosa': 'bg-pink-400',
+    'biancogrigio': 'bg-gray-300',
+    'colorcacca': 'bg-amber-800',
+    'arancione': 'bg-orange-500',
+    'nero': 'bg-gray-900',
+    'blunotte': 'bg-blue-900',
+    'verde': 'bg-green-500',
+    'giallo': 'bg-yellow-400',
+    'marrone': 'bg-amber-700',
+    'rosso': 'bg-red-500',
+    'viola': 'bg-purple-500',
+    'fragola': 'bg-rose-500',
+    'blu': 'bg-blue-500'
+};
 
             container.innerHTML = "";
             sqSnap.forEach(sqDoc => {
