@@ -237,40 +237,74 @@
             });
         }
 
-        function renderClassificaIspezioni() {
+function renderClassificaIspezioni() {
             const list = document.getElementById('ispezioni-list');
             list.innerHTML = "";
             let aggregato = {};
+            let ragazziPerCamera = {};
 
+            // 1. Mappa le camere e chi c'è dentro dall'anagrafica (mapRagazzi)
+            for (let key in mapRagazzi) {
+                const r = mapRagazzi[key];
+                if (r.camera) {
+                    const numCam = String(r.camera).trim();
+                    if (!ragazziPerCamera[numCam]) ragazziPerCamera[numCam] = [];
+                    ragazziPerCamera[numCam].push(r.nome);
+                    
+                    // Inizializza la camera a 0 punti se non esiste ancora nell'aggregato
+                    if (aggregato[numCam] === undefined) aggregato[numCam] = 0;
+                }
+            }
+
+            // 2. Calcola i punti dal registro
             registriDati.forEach(l => {
                 const causale = (l.causale || "").toUpperCase();
                 const bersaglio = (l.bersaglio || "");
 
                 if (causale.includes("ISPEZIONE CAMERA")) {
-                    // Estrai il numero camera dalla stringa "Cam X (Nome)"
-                    const match = bersaglio.match(/Cam (\d+)/i);
+                    // Cerca il nome/numero della camera estraendolo da "Cam X (Nome)"
+                    const match = bersaglio.match(/Cam\s+(.*?)\s*\(/i);
                     if (match) {
-                        const numCam = match[1];
-                        if (!aggregato[numCam]) aggregato[numCam] = 0;
-                        aggregato[numCam] += l.punti;
+                        const numCam = match[1].trim();
+                        if (aggregato[numCam] !== undefined) {
+                            aggregato[numCam] += l.punti;
+                        } else {
+                            aggregato[numCam] = l.punti; 
+                        }
                     }
                 }
             });
 
-            let arrayClassifica = Object.keys(aggregato).map(k => ({ camera: k, punti: aggregato[k] }));
+            // 3. Converti in array e ordina dalla camera con più punti a scendere
+            let arrayClassifica = Object.keys(aggregato).map(k => ({ 
+                camera: k, 
+                punti: aggregato[k],
+                ragazzi: ragazziPerCamera[k] || []
+            }));
             arrayClassifica.sort((a, b) => b.punti - a.punti);
 
+            // 4. Stampa l'HTML
             arrayClassifica.forEach((c, i) => {
-                const searchString = `camera ${c.camera}`;
+                // Ordina in ordine alfabetico i nomi per la grafica
+                const nomiRagazzi = c.ragazzi.sort().join(", ");
+                
+                // Inseriamo i nomi anche nel data-search così la barra di ricerca trova anche la camera digitando il nome del ragazzo
+                const searchString = `camera ${c.camera} ${nomiRagazzi}`.toLowerCase();
+                
                 list.innerHTML += `
-                    <div class="card-ispezioni bg-white p-4 rounded-2xl shadow-sm border border-gray-50 flex items-center justify-between card-anim" data-search="${searchString}">
-                        <div class="flex items-center gap-4">
-                            <span class="font-black text-gray-300 text-xl w-6 text-center">#${i+1}</span>
-                            <span class="font-black text-gray-800 text-sm uppercase">Camera ${c.camera}</span>
+                    <div class="card-ispezioni bg-white p-5 rounded-3xl shadow-sm border border-gray-100 flex flex-col gap-3 card-anim" data-search="${searchString}">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-4">
+                                <span class="font-black text-gray-300 text-2xl w-8 text-center">#${i+1}</span>
+                                <span class="font-black text-gray-800 text-lg uppercase tracking-tighter">Camera ${c.camera}</span>
+                            </div>
+                            <span class="bg-amber-50 text-amber-700 px-4 py-2 rounded-2xl font-black text-lg shadow-sm">
+                                ${c.punti > 0 ? '+' : ''}${c.punti}
+                            </span>
                         </div>
-                        <span class="bg-amber-50 text-amber-700 px-3 py-2 rounded-xl font-black text-sm">
-                            ${c.punti > 0 ? '+' : ''}${c.punti}
-                        </span>
+                        <div class="ml-16 pl-3 border-l-2 border-amber-200 text-xs font-bold text-gray-500 italic leading-snug">
+                            ${nomiRagazzi || "Nessun ragazzo assegnato"}
+                        </div>
                     </div>
                 `;
             });
