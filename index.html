@@ -257,8 +257,9 @@
                             }
                         }
 
-                        const appartiene = bersaglioLower.includes(nomeSqLower) || bersaglioLower.includes(sqId.toLowerCase()) || idSquadraTrovato === sqId || idSquadraTrovato === nomeSq;
-
+                        const appartiene = (bersaglioLower === nomeSqLower) ||
+(bersaglioLower === sqId.toLowerCase()) || idSquadraTrovato === sqId || idSquadraTrovato === nomeSq;
+                        
                         if (appartiene) {
                             const c = (r.causale || "").toUpperCase().trim();
                             const p = Number(r.punti) || 0;
