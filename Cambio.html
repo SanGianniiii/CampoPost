@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Correttore Registro - Giorni</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-slate-100 p-8">
+
+    <div class="max-w-xl mx-auto bg-white p-8 rounded-3xl shadow-xl">
+        <h1 class="text-xl font-black text-amber-500 mb-2">CORRETTORE REGISTRO</h1>
+        <p class="text-sm text-gray-500 mb-6">Sostituisce "Mercoledì" con "Giovedì" nelle causali della collezione <strong class="text-gray-800">registro</strong>.</p>
+        
+        <button onclick="correggiCausali()" class="w-full bg-amber-500 text-white font-black py-4 rounded-xl shadow-lg hover:bg-amber-600 transition-colors">
+            CERCA E CORREGGI
+        </button>
+        
+        <div id="log" class="mt-6 text-[11px] font-mono bg-slate-900 text-amber-400 p-4 rounded-xl h-64 overflow-y-auto leading-relaxed"></div>
+    </div>
+
+    <script>
+        // Configurazione Firebase (uguale al tuo importatore)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDYnV7Qqj_-iPLvE-KYXT1bCRbe_4seFaw",
+            authDomain: "campopostcresima2026.firebaseapp.com",
+            projectId: "campopostcresima2026",
+            storageBucket: "campopostcresima2026.firebasestorage.app",
+            messagingSenderId: "286625257910",
+            appId: "1:286625257910:web:734565f023794171e08917"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        function log(msg) { 
+            const logDiv = document.getElementById('log');
+            logDiv.innerHTML += `> ${msg}<br>`; 
+            logDiv.scrollTop = logDiv.scrollHeight; // Scorre automaticamente in basso
+        }
+
+        async function correggiCausali() {
+            log("Inizio scansione della collezione 'registro'...");
+            
+            try {
+                // Prende tutti i documenti dalla collezione registro
+                const snapshot = await db.collection("registro").get();
+                
+                if (snapshot.empty) {
+                    log("Nessun documento trovato nella collezione 'registro'.");
+                    return;
+                }
+
+                let contatoreAggiornamenti = 0;
+
+                // Cicla tutti i documenti
+                for (const doc of snapshot.docs) {
+                    const data = doc.data();
+                    let causaleAttuale = data.causale || "";
+
+                    // Controlla se la causale contiene "mercoledì" (ignorando maiuscole/minuscole e accenti vari)
+                    // Usiamo una regex per catturare MERCOLEDI, MERCOLEDÌ, Mercoledì, ecc.
+                    if (/mercoled[iì]/i.test(causaleAttuale)) {
+                        
+                        // Sostituisce mantenendo possibilmente il case originale (Tutto maiuscolo o normale)
+                        let nuovaCausale = causaleAttuale
+                            .replace(/MERCOLEDÌ/g, "GIOVEDÌ")
+                            .replace(/MERCOLEDI/g, "GIOVEDI")
+                            .replace(/Mercoledì/g, "Giovedì")
+                            .replace(/mercoledì/g, "giovedì")
+                            .replace(/mercoledi/g, "giovedi");
+
+                        // Aggiorna solo il campo causale nel database
+                        await db.collection("registro").doc(doc.id).update({
+                            causale: nuovaCausale
+                        });
+
+                        log(`✅ Modificato [${doc.id}]:<br>&nbsp;&nbsp;DA: ${causaleAttuale}<br>&nbsp;&nbsp;A : ${nuovaCausale}`);
+                        contatoreAggiornamenti++;
+                    }
+                }
+
+                log("<br>=========================");
+                log(`🏁 Operazione completata! Documenti modificati: ${contatoreAggiornamenti}`);
+                alert(`Finito! Modificati ${contatoreAggiornamenti} documenti.`);
+
+            } catch (error) {
+                log(`<span class="text-red-500">❌ ERRORE: ${error.message}</span>`);
+                console.error(error);
+            }
+        }
+    </script>
+</body>
+</html>
