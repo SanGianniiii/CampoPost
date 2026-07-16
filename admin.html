@@ -152,11 +152,15 @@
         // LOGICA DI RENDER
         // ============================
 
-        function renderRegistroCompleto() {
+                function renderRegistroCompleto() {
             const list = document.getElementById('registro-list');
             list.innerHTML = "";
             registriDati.forEach(l => {
-                const searchString = `${l.padrino} ${l.bersaglio} ${l.causale}`.toLowerCase();
+                // Recupera l'ID della squadra dal bersaglio e poi il nome
+                const idSquadra = trovaIdSquadraDaBersaglio(l.bersaglio);
+                const nomeSquadra = (idSquadra && mapSquadre[idSquadra]) ? mapSquadre[idSquadra] : 'SQUADRA N.D.';
+
+                const searchString = `${l.padrino} ${l.bersaglio} ${l.causale} ${nomeSquadra}`.toLowerCase();
                 const btnColor = l.punti > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700';
                 
                 let timeString = "";
@@ -171,7 +175,10 @@
                             <div>
                                 <span class="text-[9px] font-black text-gray-300 uppercase tracking-widest">${l.padrino} • ${timeString}</span>
                                 <h4 class="font-black text-gray-800 text-lg leading-tight mt-1">${l.bersaglio}</h4>
-                                <span class="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">${l.causale}</span>
+                                <div class="mt-1 flex items-center gap-2 flex-wrap">
+                                    <span class="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">${l.causale}</span>
+                                    <span class="bg-indigo-50 border border-indigo-100 text-indigo-600 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest">🛡️ ${nomeSquadra}</span>
+                                </div>
                             </div>
                             <span class="${btnColor} px-4 py-2 rounded-2xl font-black text-lg shadow-sm">
                                 ${l.punti > 0 ? '+' : ''}${l.punti}
@@ -186,7 +193,8 @@
             });
         }
 
-        function renderClassificaBonusMalus(isBonus) {
+
+                function renderClassificaBonusMalus(isBonus) {
             const containerId = isBonus ? 'bonus-list' : 'malus-list';
             const cardClass = isBonus ? 'card-bonus' : 'card-malus';
             const list = document.getElementById(containerId);
@@ -198,9 +206,7 @@
                 const bersaglio = (l.bersaglio || "").toLowerCase().trim();
                 const causale = (l.causale || "").toUpperCase();
                 
-                // Filtriamo solo i Bonus/Malus diretti ai ragazzi
                 if (causale.includes("B/M") && !causale.includes("ISPEZIONE")) {
-                    // Controlla se il bersaglio è un ragazzo presente in anagrafica
                     let nomeRagazzo = null;
                     for (let n in mapRagazzi) {
                         if (bersaglio.includes(n)) { nomeRagazzo = mapRagazzi[n].nome; break; }
@@ -215,16 +221,15 @@
                 }
             });
 
-            // Converti in array e ordina
             let arrayClassifica = Object.values(aggregato);
             if(isBonus) {
-                arrayClassifica.sort((a, b) => b.punti - a.punti); // Dal più alto
+                arrayClassifica.sort((a, b) => b.punti - a.punti);
             } else {
-                arrayClassifica.sort((a, b) => a.punti - b.punti); // Dal più negativo
+                arrayClassifica.sort((a, b) => a.punti - b.punti);
             }
 
             arrayClassifica.forEach((r, i) => {
-                if (r.punti === 0) return; // Nascondi chi sta a 0
+                if (r.punti === 0) return; 
                 const nomeSquadra = mapSquadre[r.idSquadra] || 'N.D.';
                 const searchString = `${r.nome} ${nomeSquadra}`.toLowerCase();
                 const textColor = isBonus ? 'text-emerald-600' : 'text-rose-600';
@@ -236,7 +241,7 @@
                             <span class="font-black text-gray-300 text-xl w-6 text-center">#${i+1}</span>
                             <div>
                                 <span class="font-bold text-gray-800 text-sm block">${r.nome}</span>
-                                <span class="text-[9px] font-black text-gray-400 uppercase tracking-widest">${nomeSquadra}</span>
+                                <span class="bg-gray-100 text-gray-500 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest mt-1 inline-block">🛡️ ${nomeSquadra}</span>
                             </div>
                         </div>
                         <span class="${bgColor} ${textColor} px-3 py-2 rounded-xl font-black text-sm">
@@ -245,34 +250,31 @@
                     </div>
                 `;
             });
-        }
+                }
+        
 
-function renderClassificaIspezioni() {
+        function renderClassificaIspezioni() {
             const list = document.getElementById('ispezioni-list');
             list.innerHTML = "";
             let aggregato = {};
             let ragazziPerCamera = {};
 
-            // 1. Mappa le camere e chi c'è dentro dall'anagrafica (mapRagazzi)
             for (let key in mapRagazzi) {
                 const r = mapRagazzi[key];
                 if (r.camera) {
                     const numCam = String(r.camera).trim();
                     if (!ragazziPerCamera[numCam]) ragazziPerCamera[numCam] = [];
-                    ragazziPerCamera[numCam].push(r.nome);
+                    ragazziPerCamera[numCam].push({ nome: r.nome, idSquadra: r.Idsquadra });
                     
-                    // Inizializza la camera a 0 punti se non esiste ancora nell'aggregato
                     if (aggregato[numCam] === undefined) aggregato[numCam] = 0;
                 }
             }
 
-            // 2. Calcola i punti dal registro
             registriDati.forEach(l => {
                 const causale = (l.causale || "").toUpperCase();
                 const bersaglio = (l.bersaglio || "");
 
                 if (causale.includes("ISPEZIONE CAMERA")) {
-                    // Cerca il nome/numero della camera estraendolo da "Cam X (Nome)"
                     const match = bersaglio.match(/Cam\s+(.*?)\s*\(/i);
                     if (match) {
                         const numCam = match[1].trim();
@@ -285,7 +287,6 @@ function renderClassificaIspezioni() {
                 }
             });
 
-            // 3. Converti in array e ordina dalla camera con più punti a scendere
             let arrayClassifica = Object.keys(aggregato).map(k => ({ 
                 camera: k, 
                 punti: aggregato[k],
@@ -293,20 +294,22 @@ function renderClassificaIspezioni() {
             }));
             arrayClassifica.sort((a, b) => b.punti - a.punti);
 
-            // 4. Stampa l'HTML
             arrayClassifica.forEach((c, i) => {
-                // Ordina in ordine alfabetico i nomi per la grafica
-                const nomiRagazzi = c.ragazzi.sort().join(", ");
+                const nomiRagazzi = c.ragazzi.map(r => r.nome).sort().join(", ");
+                // Estrae i nomi delle squadre uniche presenti in camera
+                const squadreUniche = [...new Set(c.ragazzi.map(r => mapSquadre[r.idSquadra] || 'N.D.'))].sort().join(" & ");
                 
-                // Inseriamo i nomi anche nel data-search così la barra di ricerca trova anche la camera digitando il nome del ragazzo
-                const searchString = `camera ${c.camera} ${nomiRagazzi}`.toLowerCase();
+                const searchString = `camera ${c.camera} ${nomiRagazzi} ${squadreUniche}`.toLowerCase();
                 
                 list.innerHTML += `
                     <div class="card-ispezioni bg-white p-5 rounded-3xl shadow-sm border border-gray-100 flex flex-col gap-3 card-anim" data-search="${searchString}">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-4">
                                 <span class="font-black text-gray-300 text-2xl w-8 text-center">#${i+1}</span>
-                                <span class="font-black text-gray-800 text-lg uppercase tracking-tighter">Camera ${c.camera}</span>
+                                <div>
+                                    <span class="font-black text-gray-800 text-lg uppercase tracking-tighter block">Camera ${c.camera}</span>
+                                    <span class="bg-indigo-50 border border-indigo-100 text-indigo-600 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest mt-1 inline-block">🛡️ ${squadreUniche || 'N.D.'}</span>
+                                </div>
                             </div>
                             <span class="bg-amber-50 text-amber-700 px-4 py-2 rounded-2xl font-black text-lg shadow-sm">
                                 ${c.punti > 0 ? '+' : ''}${c.punti}
@@ -319,6 +322,7 @@ function renderClassificaIspezioni() {
                 `;
             });
         }
+        
 
 
         // ============================
