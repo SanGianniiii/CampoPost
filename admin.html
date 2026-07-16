@@ -357,34 +357,41 @@
             return null;
         }
 
-        async function eliminaRecord(idRecord, bersaglio, puntiStorici) {
+                async function eliminaRecord(idRecord, bersaglio, puntiStorici) {
+            // 1. Chiediamo conferma con una modalità "forzata"
             const { isConfirmed } = await Swal.fire({
-                title: 'Sei sicuro?',
-                text: "Eliminando questo record, i punti verranno sottratti dalla squadra di appartenenza.",
+                title: 'Eliminazione Manuale',
+                text: "ID Record: " + idRecord + ". Vuoi eliminare questo record SENZA aggiornare i punti della squadra?",
                 icon: 'warning',
+                showDenyButton: true,
                 showCancelButton: true,
-                confirmButtonColor: '#ef4444',
-                cancelButtonColor: '#9ca3af',
-                confirmButtonText: 'Sì, elimina'
+                confirmButtonText: 'Elimina e AGGIORNA PUNTI',
+                denyButtonText: 'Elimina SENZA aggiornare',
+                cancelButtonText: 'Annulla'
             });
 
-            if (!isConfirmed) return;
+            if (!isConfirmed && !isConfirmed) return; // Se ha annullato
 
             try {
-                const idSquadra = trovaIdSquadraDaBersaglio(bersaglio);
-                if (idSquadra) {
-                    // Ripristino i punti (se storicamente erano +10, aggiungo -10)
-                    await db.collection("squadre").doc(idSquadra).update({
-                        punti: firebase.firestore.FieldValue.increment(-puntiStorici)
-                    });
+                // Se sceglie la seconda opzione, saltiamo la parte dell'aggiornamento squadre
+                if (isConfirmed) {
+                    const idSquadra = trovaIdSquadraDaBersaglio(bersaglio);
+                    if (idSquadra) {
+                        await db.collection("squadre").doc(idSquadra).update({
+                            punti: firebase.firestore.FieldValue.increment(-puntiStorici)
+                        });
+                    }
                 }
                 
+                // Cancellazione record
                 await db.collection("registro").doc(idRecord).delete();
-                Swal.fire({ title: 'Eliminato!', icon: 'success', timer: 1500, showConfirmButton: false });
+                Swal.fire({ title: 'Eliminato!', icon: 'success', timer: 1500 });
             } catch(e) {
-                Swal.fire('Errore', e.message, 'error');
+                // Se fallisce ancora, ti mostra l'errore esatto
+                Swal.fire('Errore critico', e.message, 'error');
             }
-        }
+                }
+        
 
         async function modificaRecord(idRecord, bersaglio, puntiStorici) {
             const { value: nuoviPunti } = await Swal.fire({
