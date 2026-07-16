@@ -124,7 +124,7 @@
         let CURRENT_USER = localStorage.getItem('padrino');
         
         const GIORNI = ['MERCOLEDÌ', 'GIOVEDÌ', 'VENERDÌ', 'SABATO', 'DOMENICA'];
-        let indiceGiorno = parseInt(localStorage.getItem('indice_giorno')) || 0;
+let indiceGiorno = 0; // Il valore verrà sovrascritto da Firebase
 
         const GIOCHI_LIST = {
             'B/M': '⭐ BONUS/ MALUS A INTERA SQUADRA',
@@ -184,25 +184,41 @@
         }
 
         function startApp() {
-            db.collection("squadre").orderBy("punti", "desc").onSnapshot(snap => {
-                const list = document.getElementById('classifica-list');
-                list.innerHTML = "";
-                
-                snap.forEach(doc => {
-                    const s = doc.data();
-                    list.innerHTML += `<div class="${colorClasses[s.colore] || 'bg-gray-500'} p-5 rounded-[2rem] flex justify-between items-center shadow-md card-anim"><span class="font-bold text-white uppercase tracking-tighter">${s.nome}</span><span class="text-3xl font-black text-white">${s.punti}</span></div>`;
-                });
-            });
-
-            db.collection("registro").orderBy("data", "desc").limit(10).onSnapshot(snap => {
-                const list = document.getElementById('registro-list');
-                list.innerHTML = "";
-                snap.forEach(doc => {
-                    const l = doc.data();
-                    list.innerHTML += `<div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-50 flex items-center justify-between card-anim"><div><span class="text-[9px] font-black text-gray-300 uppercase tracking-widest">${l.padrino}</span><br><span class="font-bold text-gray-800 text-sm italic">${l.bersaglio}</span><br><span class="text-[10px] text-gray-400 uppercase">${l.causale}</span></div><span class="${l.punti > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'} px-3 py-1.5 rounded-xl font-black text-xs">${l.punti > 0 ? '+' : ''}${l.punti}</span></div>`;
-                });
-            });
+    // --- NUOVO BLOCCO SINCRONIZZAZIONE GIORNO ---
+    db.collection("impostazioni").doc("generali").onSnapshot(doc => {
+        if (doc.exists) {
+            indiceGiorno = doc.data().indice_giorno || 0;
+            const labelGiorno = document.getElementById('label-giorno');
+            if (labelGiorno) labelGiorno.innerText = `GIORNO: ${GIORNI[indiceGiorno]} (Clicca qui)`;
+            
+            // Aggiorna la tabella se l'utente si trova nella sezione Tabellone
+            if (!document.getElementById('tab-tabellone').classList.contains('hidden')) {
+                renderTabellone();
+            }
         }
+    });
+    // ---------------------------------------------
+
+    // --- CODICE ORIGINALE CLASSIFICA E REGISTRO ---[cite: 1]
+    db.collection("squadre").orderBy("punti", "desc").onSnapshot(snap => {
+        const list = document.getElementById('classifica-list');
+        list.innerHTML = "";
+        
+        snap.forEach(doc => {
+            const s = doc.data();
+            list.innerHTML += `<div class="${colorClasses[s.colore] || 'bg-gray-500'} p-5 rounded-[2rem] flex justify-between items-center shadow-md card-anim"><span class="font-bold text-white uppercase tracking-tighter">${s.nome}</span><span class="text-3xl font-black text-white">${s.punti}</span></div>`;
+        });
+    });
+
+    db.collection("registro").orderBy("data", "desc").limit(10).onSnapshot(snap => {
+        const list = document.getElementById('registro-list');
+        list.innerHTML = "";
+        snap.forEach(doc => {
+            const l = doc.data();
+            list.innerHTML += `<div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-50 flex items-center justify-between card-anim"><div><span class="text-[9px] font-black text-gray-300 uppercase tracking-widest">${l.padrino}</span><br><span class="font-bold text-gray-800 text-sm italic">${l.bersaglio}</span><br><span class="text-[10px] text-gray-400 uppercase">${l.causale}</span></div><span class="${l.punti > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'} px-3 py-1.5 rounded-xl font-black text-xs">${l.punti > 0 ? '+' : ''}${l.punti}</span></div>`;
+        });
+    });
+}
 
         async function renderTabellone() {
             const body = document.getElementById('tabellone-body');
@@ -339,10 +355,12 @@
         }
 
         function cambiaGiorno() {
-            indiceGiorno = (indiceGiorno + 1) % GIORNI.length;
-            localStorage.setItem('indice_giorno', indiceGiorno);
-            renderTabellone();
-        }
+    let nuovoIndice = (indiceGiorno + 1) % GIORNI.length;
+    // Scrive il nuovo giorno su Firebase. '{ merge: true }' crea il documento se non esiste.
+    db.collection("impostazioni").doc("generali").set({
+        indice_giorno: nuovoIndice
+    }, { merge: true });
+}
 
         async function renderSquadre() {
             const container = document.getElementById('squadre-list');
