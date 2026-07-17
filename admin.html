@@ -48,6 +48,7 @@
         <button onclick="showTab('bonus')" id="btn-bonus" class="flex-1 py-3 text-[10px] text-gray-400 uppercase tracking-tighter">Bonus</button>
         <button onclick="showTab('malus')" id="btn-malus" class="flex-1 py-3 text-[10px] text-gray-400 uppercase tracking-tighter">Malus</button>
         <button onclick="showTab('ispezioni')" id="btn-ispezioni" class="flex-1 py-3 text-[10px] text-gray-400 uppercase tracking-tighter">Ispezioni</button>
+        <button onclick="showTab('squadre')" id="btn-squadre" class="flex-1 py-3 text-[10px] text-gray-400 uppercase tracking-tighter">Squadre</button>
     </nav>
 
     <main class="p-4 mt-2 max-w-lg mx-auto">
@@ -79,6 +80,11 @@
             </div>
             <div id="ispezioni-list" class="space-y-3"></div>
         </section>
+
+        <section id="tab-squadre" class="tab-content hidden">
+            <input type="text" id="search-squadre" oninput="filtraElementi('card-squadre', this.value)" placeholder="🔍 Cerca squadra..." class="w-full p-4 rounded-2xl shadow-sm mb-6 outline-none text-sm font-medium border border-gray-100">
+            <div id="squadre-list" class="space-y-4"></div>
+        </section>
     </main>
 
     <script>
@@ -97,13 +103,21 @@
         let registriDati = [];
         let mapRagazzi = {}; // nome lower -> intero oggetto ragazzo
         let mapSquadre = {}; // id -> nome squadra
+        let arraySquadreCompleto = []; // array per la tab squadre
 
         async function initAdminApp() {
             Swal.fire({ title: 'Sincronizzazione...', allowOutsideClick: false, showConfirmButton: false, didOpen: () => { Swal.showLoading() } });
 
-            // 1. Carica Squadre
-            const sqSnap = await db.collection("squadre").get();
-            sqSnap.forEach(doc => { mapSquadre[doc.id] = doc.data().nome; });
+            // 1. Carica Squadre (in tempo reale)
+            db.collection("squadre").onSnapshot(snap => {
+                arraySquadreCompleto = [];
+                snap.forEach(doc => { 
+                    const data = doc.data();
+                    mapSquadre[doc.id] = data.nome; 
+                    arraySquadreCompleto.push({ id: doc.id, ...data });
+                });
+                renderSquadre(); 
+            });
 
             // 2. Carica Ragazzi
             const rgSnap = await db.collection("ragazzi").get();
@@ -131,8 +145,17 @@
         function showTab(tabName) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
             document.getElementById('tab-' + tabName).classList.remove('hidden');
-            document.querySelectorAll('nav button').forEach(b => b.classList.remove('tab-active', 'text-gray-400'));
-            document.getElementById('btn-' + tabName).classList.add('tab-active');
+            
+            // Rimuove gli stili attivi da TUTTI i bottoni e applica il grigio
+            document.querySelectorAll('nav button').forEach(b => {
+                b.classList.remove('tab-active');
+                b.classList.add('text-gray-400');
+            });
+            
+            // Aggiunge lo stile attivo solo alla tab cliccata
+            const activeBtn = document.getElementById('btn-' + tabName);
+            activeBtn.classList.add('tab-active');
+            activeBtn.classList.remove('text-gray-400');
         }
 
         function filtraElementi(classe, query) {
@@ -319,6 +342,74 @@
             });
         }
         
+        // ============================
+        // LOGICA SQUADRE (RENDER E MODIFICA)
+        // ============================
+
+        function renderSquadre() {
+            const list = document.getElementById('squadre-list');
+            if(!list) return;
+            list.innerHTML = "";
+            
+            // Ordina le squadre dalla prima all'ultima in classifica
+            let squadreOrdinate = [...arraySquadreCompleto].sort((a, b) => (b.punti || 0) - (a.punti || 0));
+
+            squadreOrdinate.forEach((sq, i) => {
+                const searchString = `${sq.nome}`.toLowerCase();
+                const punti = sq.punti || 0;
+                
+                // Usa il colore della squadra se esiste, altrimenti usa un colore di default
+                const colorHex = sq.colore || '#6366f1'; 
+
+                list.innerHTML += `
+                    <div class="card-squadre bg-white p-5 rounded-3xl shadow-sm border border-gray-100 flex items-center justify-between card-anim" data-search="${searchString}">
+                        <div class="flex items-center gap-4">
+                            <span class="font-black text-gray-300 text-2xl w-8 text-center">#${i+1}</span>
+                            <div>
+                                <span class="font-black text-gray-800 text-xl tracking-tighter block uppercase">${sq.nome}</span>
+                                <span style="background-color: ${colorHex}15; color: ${colorHex}; border: 1px solid ${colorHex}40;" class="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest mt-1 inline-block">
+                                    ID: ${sq.id}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-end gap-2">
+                            <span class="bg-gray-50 text-gray-800 px-5 py-2 rounded-2xl font-black text-xl shadow-sm border border-gray-100">
+                                ${punti}
+                            </span>
+                            <button onclick="modificaPunteggioSquadra('${sq.id}', '${sq.nome}', ${punti})" class="text-[10px] bg-indigo-50 hover:bg-indigo-100 text-indigo-600 px-4 py-1.5 rounded-xl font-black uppercase transition-colors">
+                                Modifica
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        async function modificaPunteggioSquadra(idSquadra, nomeSquadra, puntiAttuali) {
+            const { value: nuoviPunti } = await Swal.fire({
+                title: `Modifica ${nomeSquadra}`,
+                text: 'Inserisci il nuovo punteggio totale della squadra:',
+                input: 'number',
+                inputValue: puntiAttuali,
+                showCancelButton: true,
+                confirmButtonColor: '#4f46e5',
+                cancelButtonText: 'Annulla',
+                confirmButtonText: 'Salva Punteggio'
+            });
+
+            // Controlla che l'utente non abbia annullato e che i punti siano effettivamente cambiati
+            if (nuoviPunti === undefined || nuoviPunti === "" || Number(nuoviPunti) === puntiAttuali) return;
+
+            try {
+                await db.collection("squadre").doc(idSquadra).update({
+                    punti: Number(nuoviPunti)
+                });
+                Swal.fire({ title: 'Aggiornato!', icon: 'success', timer: 1500, showConfirmButton: false });
+            } catch(e) {
+                Swal.fire('Errore', e.message, 'error');
+            }
+        }
+
         // ============================
         // LOGICA DI AGGIORNAMENTO E RICERCA (CORRETTA)
         // ============================
