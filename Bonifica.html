@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Bonifica Nomi e Registro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-gray-100 p-6">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-2xl font-black mb-6">Analisi Doppioni e Registro</h1>
+        <div id="output" class="space-y-6"></div>
+    </div>
+
+    <script>
+        // Configurazione Firebase recuperata dai tuoi file originali
+        const firebaseConfig = {
+            apiKey: "AIzaSyDYnV7Qqj_-iPLvE-KYXT1bCRbe_4seFaw",
+            authDomain: "campopostcresima2026.firebaseapp.com",
+            projectId: "campopostcresima2026",
+            storageBucket: "campopostcresima2026.firebasestorage.app",
+            messagingSenderId: "286625257910",
+            appId: "1:286625257910:web:734565f023794171e08917"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        async function analizza() {
+            document.getElementById('output').innerHTML = '<div class="animate-pulse font-bold text-indigo-600">Caricamento dati in corso...</div>';
+
+            try {
+                const rgSnap = await db.collection("ragazzi").get();
+                const regSnap = await db.collection("registro").orderBy("data", "desc").get();
+                
+                const nomi = [];
+                rgSnap.forEach(doc => nomi.push({ id: doc.id, nome: doc.data().nome }));
+
+                // 1. Trova doppioni (normalizzando stringhe)
+                const normalizza = (n) => n.toLowerCase().replace(/['"’]/g, "").replace(/\s+/g, "");
+                const mappa = {};
+                nomi.forEach(r => {
+                    if (r.nome) {
+                        const norm = normalizza(r.nome);
+                        if (!mappa[norm]) mappa[norm] = [];
+                        mappa[norm].push(r);
+                    }
+                });
+
+                // 2. Visualizza Doppioni
+                let html = '<div class="bg-white p-6 rounded-3xl shadow-sm"><h2 class="font-bold text-xl mb-4 text-rose-600">🚨 Potenziali Doppioni nei Ragazzi</h2>';
+                let trovatiDoppioni = false;
+                for (let key in mappa) {
+                    if (mappa[key].length > 1) {
+                        trovatiDoppioni = true;
+                        html += `<div class="bg-rose-50 p-4 rounded-xl mb-3 border border-rose-100">
+                                    <div class="text-rose-800 font-black mb-2 uppercase tracking-wide">Gruppo simile: "${key}"</div>
+                                    <ul class="list-disc ml-6 space-y-1 text-sm text-gray-700">`;
+                        mappa[key].forEach(r => html += `<li><b>${r.nome}</b> <span class="text-xs text-gray-400">(ID: ${r.id})</span></li>`);
+                        html += `</ul></div>`;
+                    }
+                }
+                if (!trovatiDoppioni) {
+                    html += '<div class="text-emerald-600 font-bold">Nessun doppione evidente trovato! 🎉</div>';
+                }
+                html += '</div>';
+
+                // 3. Registro diviso per data
+                html += '<h2 class="text-2xl font-black mt-8 mb-4 text-gray-800">Storico Registro per Data</h2>';
+                const registroPerData = {};
+                
+                regSnap.forEach(doc => {
+                    const r = doc.data();
+                    if(!r.data) return;
+                    
+                    const dataObj = r.data.toDate();
+                    const dataFormattata = dataObj.toLocaleDateString('it-IT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                    const ora = dataObj.toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
+                    
+                    if(!registroPerData[dataFormattata]) registroPerData[dataFormattata] = [];
+                    registroPerData[dataFormattata].push({ ...r, ora: ora });
+                });
+
+                for (let data in registroPerData) {
+                    html += `<div class="bg-white p-6 rounded-3xl shadow-sm mb-6 border border-gray-100">
+                                <h3 class="font-black text-indigo-600 mb-4 text-lg border-b pb-2 capitalize">${data}</h3>
+                                <div class="space-y-2">`;
+                    
+                    registroPerData[data].forEach(l => {
+                        const colorePunti = l.punti > 0 ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50';
+                        const segno = l.punti > 0 ? '+' : '';
+                        
+                        html += `<div class="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors">
+                                    <div class="flex-1">
+                                        <div class="text-[10px] text-gray-400 font-bold">${l.ora} • Padrino: ${l.padrino}</div>
+                                        <div class="font-bold text-gray-800 text-sm mt-0.5">${l.bersaglio}</div>
+                                        <div class="text-xs text-gray-500 uppercase tracking-tight mt-0.5">${l.causale}</div>
+                                    </div>
+                                    <div class="font-black ${colorePunti} px-3 py-1 rounded-lg text-sm shadow-sm">
+                                        ${segno}${l.punti} pt
+                                    </div>
+                                 </div>`;
+                    });
+                    html += '</div></div>';
+                }
+                
+                document.getElementById('output').innerHTML = html;
+                
+            } catch (error) {
+                document.getElementById('output').innerHTML = `<div class="bg-rose-100 text-rose-700 p-4 rounded-xl font-bold">Errore durante il caricamento: ${error.message}</div>`;
+                console.error(error);
+            }
+        }
+        
+        analizza();
+    </script>
+</body>
+</html>
