@@ -2,14 +2,15 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <title>Bonifica Nomi e Registro</title>
+    <title>Bonifica Definitiva Nomi e Registro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 </head>
 <body class="bg-gray-100 p-6">
-    <div class="max-w-4xl mx-auto">
-        <h1 class="text-2xl font-black mb-6 uppercase tracking-tight text-gray-900">Analisi Doppioni e Registro Filtrato</h1>
+    <div class="max-w-5xl mx-auto">
+        <h1 class="text-3xl font-black mb-2 uppercase tracking-tight text-gray-900">Strumento di Bonifica Database</h1>
+        <p class="text-gray-600 mb-8 font-medium">Analisi delle anagrafiche con apostrofo e ricalcolo automatico dei punteggi squadra.</p>
         <div id="output" class="space-y-6"></div>
     </div>
 
@@ -25,17 +26,20 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
+        // Variabile globale per mantenere lo stato dei dati e passarli alla funzione di cancellazione
+        window.datiBonifica = [];
+
         async function analizza() {
-            document.getElementById('output').innerHTML = '<div class="animate-pulse font-bold text-indigo-600">Scansione e filtraggio dati in corso...</div>';
+            document.getElementById('output').innerHTML = '<div class="animate-pulse flex items-center gap-3 font-bold text-indigo-600 bg-indigo-50 p-6 rounded-2xl"><svg class="animate-spin h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Scansione anagrafiche e registri in corso...</div>';
 
             try {
                 const rgSnap = await db.collection("ragazzi").get();
                 const regSnap = await db.collection("registro").orderBy("data", "desc").get();
                 
                 const nomi = [];
-                rgSnap.forEach(doc => nomi.push({ id: doc.id, nome: doc.data().nome }));
+                rgSnap.forEach(doc => nomi.push({ id: doc.id, ...doc.data() }));
 
-                // 1. Trova i doppioni normalizzando le stringhe
+                // 1. Trova i doppioni
                 const normalizza = (n) => n.toLowerCase().replace(/['"’]/g, "").replace(/\s+/g, "");
                 const mappaDoppioni = {};
                 nomi.forEach(r => {
@@ -46,101 +50,225 @@
                     }
                 });
 
-                // Creiamo un Set con tutte le varianti di nome "corrotte" o doppie per fare il controllo sul registro
-                const setNomiInDoppione = new Set();
-                
-                let html = '<div class="bg-white p-6 rounded-3xl shadow-sm"><h2 class="font-bold text-xl mb-4 text-rose-600">🚨 Ragazzi con Nomi Doppioni Rilevati</h2>';
-                let trovatiDoppioni = false;
-                
+                window.datiBonifica = [];
+
+                // 2. Identifica i candidati per l'eliminazione (quelli con l'apostrofo) e raccoglie i registri
                 for (let key in mappaDoppioni) {
-                    if (mappaDoppioni[key].length > 1) {
-                        trovatiDoppioni = true;
-                        html += `<div class="bg-rose-50 p-4 rounded-xl mb-3 border border-rose-100">
-                                    <div class="text-rose-800 font-black mb-2 uppercase tracking-wide">Gruppo Conflitto: "${key}"</div>
-                                    <ul class="list-disc ml-6 space-y-1 text-sm text-gray-700">`;
-                        
-                        mappaDoppioni[key].forEach(r => {
-                            html += `<li><b>${r.nome}</b> <span class="text-xs text-gray-400">(ID: ${r.id})</span></li>`;
-                            // Aggiungiamo il nome in minuscolo al set dei filtri
-                            setNomiInDoppione.add(r.nome.toLowerCase().trim());
-                        });
-                        
-                        html += `</ul></div>`;
-                    }
-                }
-                
-                if (!trovatiDoppioni) {
-                    html += '<div class="text-emerald-600 font-bold">Nessun nome doppione trovato nel database ragazzi! 🎉</div>';
-                    html += '</div>';
-                    document.getElementById('output').innerHTML = html;
-                    return;
-                }
-                html += '</div>';
+                    const gruppo = mappaDoppioni[key];
+                    if (gruppo.length > 1) {
+                        const daEliminare = gruppo.find(r => r.nome.includes("'") || r.nome.includes("’"));
+                        const daMantenere = gruppo.find(r => !(r.nome.includes("'") || r.nome.includes("’")));
 
-                // 2. Filtra il registro: tiene SOLO i record che contengono uno dei nomi doppioni
-                html += '<h2 class="text-2xl font-black mt-8 mb-4 text-gray-800">Storico Registro (Solo dei Doppioni)</h2>';
-                const registroPerData = {};
-                let recordFiltratiContatore = 0;
-                
-                regSnap.forEach(doc => {
-                    const r = doc.data();
-                    if(!r.data || !r.bersaglio) return;
-                    
-                    const bersaglioLower = r.bersaglio.toLowerCase().trim();
-                    let appartieneAIdoppioni = false;
+                        if (daEliminare) {
+                            let registriDaEliminare = [];
+                            let puntiTotali = 0;
 
-                    // Verifica se il bersaglio del punto è uno dei nomi incriminati
-                    for (let nomeDoppio of setNomiInDoppione) {
-                        if (bersaglioLower === nomeDoppio || bersaglioLower.includes(`(${nomeDoppio})`) || bersaglioLower.includes(nomeDoppio)) {
-                            appartieneAIdoppioni = true;
-                            break;
+                            // Cerca nei registri
+                            regSnap.forEach(doc => {
+                                const r = doc.data();
+                                if(!r.bersaglio) return;
+                                
+                                const bersaglioLower = r.bersaglio.toLowerCase().trim();
+                                const nomeTargetLower = daEliminare.nome.toLowerCase().trim();
+
+                                if (bersaglioLower === nomeTargetLower || bersaglioLower.includes(`(${nomeTargetLower})`) || bersaglioLower.includes(nomeTargetLower)) {
+                                    const dataObj = r.data ? r.data.toDate() : new Date();
+                                    registriDaEliminare.push({ 
+                                        id: doc.id, 
+                                        ...r,
+                                        dataFormattata: dataObj.toLocaleDateString('it-IT') + ' ' + dataObj.toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'})
+                                    });
+                                    if (r.punti) puntiTotali += Number(r.punti);
+                                }
+                            });
+
+                            // Cerca la squadra e il suo punteggio attuale (Gestione flessibile del db)
+                            let punteggioSquadra = "N/D";
+                            let nomeCampoPunteggio = "punti";
+                            
+                            if (daEliminare.squadra) {
+                                try {
+                                    const sqDoc = await db.collection("squadre").doc(daEliminare.squadra).get();
+                                    if (sqDoc.exists) {
+                                        const sqData = sqDoc.data();
+                                        if (sqData.punteggio !== undefined) {
+                                            punteggioSquadra = Number(sqData.punteggio);
+                                            nomeCampoPunteggio = "punteggio";
+                                        } else if (sqData.punti !== undefined) {
+                                            punteggioSquadra = Number(sqData.punti);
+                                            nomeCampoPunteggio = "punti";
+                                        } else {
+                                            punteggioSquadra = 0;
+                                        }
+                                    }
+                                } catch (e) {
+                                    console.warn("Collezione squadre non trovata o permessi mancanti per: " + daEliminare.squadra);
+                                }
+                            }
+
+                            window.datiBonifica.push({
+                                daEliminare,
+                                daMantenere,
+                                registri: registriDaEliminare,
+                                puntiTotaliRegistri: puntiTotali,
+                                squadraNome: daEliminare.squadra || null,
+                                punteggioAttuale: punteggioSquadra,
+                                campoPunteggioSquadra: nomeCampoPunteggio
+                            });
                         }
                     }
+                }
 
-                    // Se non è un doppione, saltiamo questo log e andiamo avanti
-                    if (!appartieneAIdoppioni) return;
+                // 3. Genera l'HTML (Interfaccia a Schede)
+                if (window.datiBonifica.length === 0) {
+                    document.getElementById('output').innerHTML = '<div class="bg-white p-6 rounded-3xl shadow-sm text-emerald-600 font-bold text-lg">Nessun duplicato con apostrofo da bonificare trovato! 🎉</div>';
+                    return;
+                }
 
-                    recordFiltratiContatore++;
-                    const dataObj = r.data.toDate();
-                    const dataFormattata = dataObj.toLocaleDateString('it-IT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-                    const ora = dataObj.toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
+                let html = '';
+                window.datiBonifica.forEach((dati, index) => {
+                    const diffPunti = dati.puntiTotaliRegistri;
+                    const segnoDiff = diffPunti > 0 ? '-' : (diffPunti < 0 ? '+' : '');
+                    const coloreDiff = diffPunti > 0 ? 'text-rose-600' : (diffPunti < 0 ? 'text-emerald-600' : 'text-gray-500');
                     
-                    if(!registroPerData[dataFormattata]) registroPerData[dataFormattata] = [];
-                    registroPerData[dataFormattata].push({ ...r, ora: ora });
+                    let punteggioDopoStr = "N/D";
+                    if (dati.punteggioAttuale !== "N/D") {
+                        punteggioDopoStr = dati.punteggioAttuale - diffPunti;
+                    }
+
+                    html += `
+                    <div id="card-${index}" class="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100">
+                        <!-- Intestazione Ragazzo -->
+                        <div class="bg-rose-50 px-6 py-4 border-b border-rose-100 flex justify-between items-center">
+                            <div>
+                                <h2 class="text-xl font-black text-rose-800">Cancellazione: ${dati.daEliminare.nome}</h2>
+                                <p class="text-sm text-rose-600/80 font-medium mt-1">Verrà mantenuto il record: <b class="text-gray-800">${dati.daMantenere ? dati.daMantenere.nome : 'N/D'}</b></p>
+                            </div>
+                            <div class="text-right text-sm text-gray-500">
+                                Squadra<br><span class="font-bold text-gray-800 uppercase tracking-wide">${dati.squadraNome || 'Nessuna'}</span>
+                            </div>
+                        </div>
+
+                        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <!-- Colonna Registri -->
+                            <div>
+                                <h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                    <span>Registri da eliminare (${dati.registri.length})</span>
+                                </h3>
+                                ${dati.registri.length === 0 ? '<p class="text-sm text-gray-500 italic">Nessun record nel registro per questo nome.</p>' : ''}
+                                <div class="space-y-2 max-h-60 overflow-y-auto pr-2">
+                                    ${dati.registri.map(reg => `
+                                        <div class="bg-gray-50 p-3 rounded-xl border border-gray-100 text-sm flex justify-between items-center">
+                                            <div>
+                                                <div class="font-bold text-gray-700">${reg.causale || 'N/D'}</div>
+                                                <div class="text-[11px] text-gray-400 mt-0.5">${reg.dataFormattata} • Padrino: ${reg.padrino || 'N/D'}</div>
+                                            </div>
+                                            <div class="font-black ${reg.punti > 0 ? 'text-emerald-600' : 'text-rose-600'} bg-white px-2 py-1 rounded shadow-sm border border-gray-100">
+                                                ${reg.punti > 0 ? '+' : ''}${reg.punti || 0}
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+
+                            <!-- Colonna Punteggio e Azione -->
+                            <div class="flex flex-col justify-between">
+                                <div>
+                                    <h3 class="font-bold text-gray-800 mb-3">Impatto sul Punteggio Squadra</h3>
+                                    <div class="bg-gray-50 rounded-2xl p-4 border border-gray-100 grid grid-cols-3 gap-2 text-center">
+                                        <div>
+                                            <div class="text-[11px] uppercase tracking-wider text-gray-500 font-bold mb-1">Prima</div>
+                                            <div class="text-xl font-black text-gray-800">${dati.punteggioAttuale !== "N/D" ? dati.punteggioAttuale : '-'}</div>
+                                        </div>
+                                        <div>
+                                            <div class="text-[11px] uppercase tracking-wider text-gray-500 font-bold mb-1">Storno</div>
+                                            <div class="text-xl font-black ${coloreDiff}">${segnoDiff}${Math.abs(diffPunti)}</div>
+                                        </div>
+                                        <div>
+                                            <div class="text-[11px] uppercase tracking-wider text-indigo-500 font-bold mb-1">Dopo</div>
+                                            <div class="text-xl font-black text-indigo-600">${punteggioDopoStr !== "N/D" ? punteggioDopoStr : '-'}</div>
+                                        </div>
+                                    </div>
+                                    <p class="text-xs text-gray-400 mt-3 leading-relaxed">
+                                        Eliminando i log dal registro, i punti originariamente assegnati (o sottratti) tramite questo utente verranno stornati dal totale della squadra in modo automatico.
+                                    </p>
+                                </div>
+
+                                <button id="btn-${index}" onclick="eseguiBonifica(${index})" class="mt-6 w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    Conferma ed Elimina
+                                </button>
+                            </div>
+                        </div>
+                    </div>`;
                 });
 
-                if (recordFiltratiContatore === 0) {
-                    html += '<div class="bg-white p-6 rounded-3xl shadow-sm text-gray-500 font-medium">Nessun punto assegnato nel registro a queste varianti di nome.</div>';
-                } else {
-                    for (let data in registroPerData) {
-                        html += `<div class="bg-white p-6 rounded-3xl shadow-sm mb-6 border border-gray-100">
-                                    <h3 class="font-black text-indigo-600 mb-4 text-lg border-b pb-2 capitalize">${data}</h3>
-                                    <div class="space-y-2">`;
-                        
-                        registroPerData[data].forEach(l => {
-                            const colorePunti = l.punti > 0 ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50';
-                            const segno = l.punti > 0 ? '+' : '';
-                            
-                            html += `<div class="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors">
-                                        <div class="flex-1">
-                                            <div class="text-[10px] text-gray-400 font-bold">${l.ora} • Padrino: ${l.padrino}</div>
-                                            <div class="font-bold text-rose-700 text-sm mt-0.5">${l.bersaglio}</div>
-                                            <div class="text-xs text-gray-500 uppercase tracking-tight mt-0.5">${l.causale}</div>
-                                        </div>
-                                        <div class="font-black ${colorePunti} px-3 py-1 rounded-lg text-sm shadow-sm">
-                                            ${segno}${l.punti} pt
-                                        </div>
-                                     </div>`;
-                        });
-                        html += '</div></div>';
-                    }
-                }
-                
                 document.getElementById('output').innerHTML = html;
                 
             } catch (error) {
-                document.getElementById('output').innerHTML = `<div class="bg-rose-100 text-rose-700 p-4 rounded-xl font-bold">Errore durante il filtraggio: ${error.message}</div>`;
+                document.getElementById('output').innerHTML = `<div class="bg-rose-100 text-rose-700 p-4 rounded-xl font-bold border border-rose-200">Errore critico: ${error.message}</div>`;
                 console.error(error);
+            }
+        }
+
+        // Funzione di cancellazione con Batch (Transazione atomica)
+        window.eseguiBonifica = async function(indice) {
+            const gruppo = window.datiBonifica[indice];
+            const conferma = confirm(`ATTENZIONE:\nSei sicuro di voler eliminare l'anagrafica di "${gruppo.daEliminare.nome}" e i suoi ${gruppo.registri.length} record dal registro?\n\nQuesta operazione aggiornerà il punteggio della squadra e non può essere annullata.`);
+            
+            if(!conferma) return;
+
+            const btn = document.getElementById(`btn-${indice}`);
+            const card = document.getElementById(`card-${indice}`);
+            
+            btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Elaborazione batch in corso...`;
+            btn.disabled = true;
+            btn.classList.add('opacity-75', 'cursor-not-allowed');
+
+            try {
+                // Inizializza il batch di Firebase
+                const batch = db.batch();
+
+                // 1. Aggiungi le eliminazioni del registro al batch
+                gruppo.registri.forEach(reg => {
+                    const regRef = db.collection("registro").doc(reg.id);
+                    batch.delete(regRef);
+                });
+
+                // 2. Aggiungi lo storno del punteggio squadra al batch (solo se i punti totali da stornare non sono 0)
+                if (gruppo.squadraNome && gruppo.puntiTotaliRegistri !== 0) {
+                    const sqRef = db.collection("squadre").doc(gruppo.squadraNome);
+                    const updateData = {};
+                    // Sottraiamo l'importo totale dei registri tramite FieldValue.increment
+                    updateData[gruppo.campoPunteggioSquadra] = firebase.firestore.FieldValue.increment(-gruppo.puntiTotaliRegistri);
+                    batch.update(sqRef, updateData);
+                }
+
+                // 3. Aggiungi l'eliminazione del ragazzo errato al batch
+                const ragazzoRef = db.collection("ragazzi").doc(gruppo.daEliminare.id);
+                batch.delete(ragazzoRef);
+
+                // Esegui la transazione atomica
+                await batch.commit();
+
+                // Aggiorna la UI
+                card.innerHTML = `
+                    <div class="flex items-center gap-4 text-emerald-700 font-medium justify-center p-8 bg-emerald-50 h-full">
+                        <div class="bg-emerald-100 p-3 rounded-full text-emerald-600">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                        </div>
+                        <div>
+                            <div class="font-black text-lg">Bonifica completata con successo!</div>
+                            <div class="text-emerald-600/80 text-sm mt-0.5">Anagrafica rimossa, registri puliti e punteggi stornati.</div>
+                        </div>
+                    </div>`;
+
+            } catch (error) {
+                console.error(error);
+                alert("Errore durante l'operazione sul database: " + error.message);
+                btn.innerHTML = "Riprova Bonifica";
+                btn.disabled = false;
+                btn.classList.remove('opacity-75', 'cursor-not-allowed');
             }
         }
         
