@@ -9,12 +9,11 @@
 </head>
 <body class="bg-gray-100 p-6">
     <div class="max-w-4xl mx-auto">
-        <h1 class="text-2xl font-black mb-6">Analisi Doppioni e Registro</h1>
+        <h1 class="text-2xl font-black mb-6 uppercase tracking-tight text-gray-900">Analisi Doppioni e Registro Filtrato</h1>
         <div id="output" class="space-y-6"></div>
     </div>
 
     <script>
-        // Configurazione Firebase recuperata dai tuoi file originali
         const firebaseConfig = {
             apiKey: "AIzaSyDYnV7Qqj_-iPLvE-KYXT1bCRbe_4seFaw",
             authDomain: "campopostcresima2026.firebaseapp.com",
@@ -27,7 +26,7 @@
         const db = firebase.firestore();
 
         async function analizza() {
-            document.getElementById('output').innerHTML = '<div class="animate-pulse font-bold text-indigo-600">Caricamento dati in corso...</div>';
+            document.getElementById('output').innerHTML = '<div class="animate-pulse font-bold text-indigo-600">Scansione e filtraggio dati in corso...</div>';
 
             try {
                 const rgSnap = await db.collection("ragazzi").get();
@@ -36,43 +35,72 @@
                 const nomi = [];
                 rgSnap.forEach(doc => nomi.push({ id: doc.id, nome: doc.data().nome }));
 
-                // 1. Trova doppioni (normalizzando stringhe)
+                // 1. Trova i doppioni normalizzando le stringhe
                 const normalizza = (n) => n.toLowerCase().replace(/['"’]/g, "").replace(/\s+/g, "");
-                const mappa = {};
+                const mappaDoppioni = {};
                 nomi.forEach(r => {
                     if (r.nome) {
                         const norm = normalizza(r.nome);
-                        if (!mappa[norm]) mappa[norm] = [];
-                        mappa[norm].push(r);
+                        if (!mappaDoppioni[norm]) mappaDoppioni[norm] = [];
+                        mappaDoppioni[norm].push(r);
                     }
                 });
 
-                // 2. Visualizza Doppioni
-                let html = '<div class="bg-white p-6 rounded-3xl shadow-sm"><h2 class="font-bold text-xl mb-4 text-rose-600">🚨 Potenziali Doppioni nei Ragazzi</h2>';
+                // Creiamo un Set con tutte le varianti di nome "corrotte" o doppie per fare il controllo sul registro
+                const setNomiInDoppione = new Set();
+                
+                let html = '<div class="bg-white p-6 rounded-3xl shadow-sm"><h2 class="font-bold text-xl mb-4 text-rose-600">🚨 Ragazzi con Nomi Doppioni Rilevati</h2>';
                 let trovatiDoppioni = false;
-                for (let key in mappa) {
-                    if (mappa[key].length > 1) {
+                
+                for (let key in mappaDoppioni) {
+                    if (mappaDoppioni[key].length > 1) {
                         trovatiDoppioni = true;
                         html += `<div class="bg-rose-50 p-4 rounded-xl mb-3 border border-rose-100">
-                                    <div class="text-rose-800 font-black mb-2 uppercase tracking-wide">Gruppo simile: "${key}"</div>
+                                    <div class="text-rose-800 font-black mb-2 uppercase tracking-wide">Gruppo Conflitto: "${key}"</div>
                                     <ul class="list-disc ml-6 space-y-1 text-sm text-gray-700">`;
-                        mappa[key].forEach(r => html += `<li><b>${r.nome}</b> <span class="text-xs text-gray-400">(ID: ${r.id})</span></li>`);
+                        
+                        mappaDoppioni[key].forEach(r => {
+                            html += `<li><b>${r.nome}</b> <span class="text-xs text-gray-400">(ID: ${r.id})</span></li>`;
+                            // Aggiungiamo il nome in minuscolo al set dei filtri
+                            setNomiInDoppione.add(r.nome.toLowerCase().trim());
+                        });
+                        
                         html += `</ul></div>`;
                     }
                 }
+                
                 if (!trovatiDoppioni) {
-                    html += '<div class="text-emerald-600 font-bold">Nessun doppione evidente trovato! 🎉</div>';
+                    html += '<div class="text-emerald-600 font-bold">Nessun nome doppione trovato nel database ragazzi! 🎉</div>';
+                    html += '</div>';
+                    document.getElementById('output').innerHTML = html;
+                    return;
                 }
                 html += '</div>';
 
-                // 3. Registro diviso per data
-                html += '<h2 class="text-2xl font-black mt-8 mb-4 text-gray-800">Storico Registro per Data</h2>';
+                // 2. Filtra il registro: tiene SOLO i record che contengono uno dei nomi doppioni
+                html += '<h2 class="text-2xl font-black mt-8 mb-4 text-gray-800">Storico Registro (Solo dei Doppioni)</h2>';
                 const registroPerData = {};
+                let recordFiltratiContatore = 0;
                 
                 regSnap.forEach(doc => {
                     const r = doc.data();
-                    if(!r.data) return;
+                    if(!r.data || !r.bersaglio) return;
                     
+                    const bersaglioLower = r.bersaglio.toLowerCase().trim();
+                    let appartieneAIdoppioni = false;
+
+                    // Verifica se il bersaglio del punto è uno dei nomi incriminati
+                    for (let nomeDoppio of setNomiInDoppione) {
+                        if (bersaglioLower === nomeDoppio || bersaglioLower.includes(`(${nomeDoppio})`) || bersaglioLower.includes(nomeDoppio)) {
+                            appartieneAIdoppioni = true;
+                            break;
+                        }
+                    }
+
+                    // Se non è un doppione, saltiamo questo log e andiamo avanti
+                    if (!appartieneAIdoppioni) return;
+
+                    recordFiltratiContatore++;
                     const dataObj = r.data.toDate();
                     const dataFormattata = dataObj.toLocaleDateString('it-IT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
                     const ora = dataObj.toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
@@ -81,33 +109,37 @@
                     registroPerData[dataFormattata].push({ ...r, ora: ora });
                 });
 
-                for (let data in registroPerData) {
-                    html += `<div class="bg-white p-6 rounded-3xl shadow-sm mb-6 border border-gray-100">
-                                <h3 class="font-black text-indigo-600 mb-4 text-lg border-b pb-2 capitalize">${data}</h3>
-                                <div class="space-y-2">`;
-                    
-                    registroPerData[data].forEach(l => {
-                        const colorePunti = l.punti > 0 ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50';
-                        const segno = l.punti > 0 ? '+' : '';
+                if (recordFiltratiContatore === 0) {
+                    html += '<div class="bg-white p-6 rounded-3xl shadow-sm text-gray-500 font-medium">Nessun punto assegnato nel registro a queste varianti di nome.</div>';
+                } else {
+                    for (let data in registroPerData) {
+                        html += `<div class="bg-white p-6 rounded-3xl shadow-sm mb-6 border border-gray-100">
+                                    <h3 class="font-black text-indigo-600 mb-4 text-lg border-b pb-2 capitalize">${data}</h3>
+                                    <div class="space-y-2">`;
                         
-                        html += `<div class="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors">
-                                    <div class="flex-1">
-                                        <div class="text-[10px] text-gray-400 font-bold">${l.ora} • Padrino: ${l.padrino}</div>
-                                        <div class="font-bold text-gray-800 text-sm mt-0.5">${l.bersaglio}</div>
-                                        <div class="text-xs text-gray-500 uppercase tracking-tight mt-0.5">${l.causale}</div>
-                                    </div>
-                                    <div class="font-black ${colorePunti} px-3 py-1 rounded-lg text-sm shadow-sm">
-                                        ${segno}${l.punti} pt
-                                    </div>
-                                 </div>`;
-                    });
-                    html += '</div></div>';
+                        registroPerData[data].forEach(l => {
+                            const colorePunti = l.punti > 0 ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50';
+                            const segno = l.punti > 0 ? '+' : '';
+                            
+                            html += `<div class="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors">
+                                        <div class="flex-1">
+                                            <div class="text-[10px] text-gray-400 font-bold">${l.ora} • Padrino: ${l.padrino}</div>
+                                            <div class="font-bold text-rose-700 text-sm mt-0.5">${l.bersaglio}</div>
+                                            <div class="text-xs text-gray-500 uppercase tracking-tight mt-0.5">${l.causale}</div>
+                                        </div>
+                                        <div class="font-black ${colorePunti} px-3 py-1 rounded-lg text-sm shadow-sm">
+                                            ${segno}${l.punti} pt
+                                        </div>
+                                     </div>`;
+                        });
+                        html += '</div></div>';
+                    }
                 }
                 
                 document.getElementById('output').innerHTML = html;
                 
             } catch (error) {
-                document.getElementById('output').innerHTML = `<div class="bg-rose-100 text-rose-700 p-4 rounded-xl font-bold">Errore durante il caricamento: ${error.message}</div>`;
+                document.getElementById('output').innerHTML = `<div class="bg-rose-100 text-rose-700 p-4 rounded-xl font-bold">Errore durante il filtraggio: ${error.message}</div>`;
                 console.error(error);
             }
         }
