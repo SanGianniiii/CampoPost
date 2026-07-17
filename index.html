@@ -124,7 +124,7 @@
         let CURRENT_USER = localStorage.getItem('padrino');
         
         const GIORNI = ['MERCOLEDÌ', 'GIOVEDÌ', 'VENERDÌ', 'SABATO', 'DOMENICA'];
-let indiceGiorno = 0; // Il valore verrà sovrascritto da Firebase
+        let indiceGiorno = 0; 
 
         const GIOCHI_LIST = {
             'B/M': '⭐ BONUS/ MALUS A INTERA SQUADRA',
@@ -148,7 +148,6 @@ let indiceGiorno = 0; // Il valore verrà sovrascritto da Firebase
             "LANCIO DELL'ACQUA": "Lancio dell'Acqua"
         };
 
-        // Mappa Colori Centralizzata
         const colorClasses = { 
             'azzurro': 'bg-sky-400', 'rosa': 'bg-pink-400', 'biancogrigio': 'bg-gray-300',
             'colorcacca': 'bg-yellow-500', 'arancione': 'bg-orange-500', 'nero': 'bg-gray-900',
@@ -184,41 +183,37 @@ let indiceGiorno = 0; // Il valore verrà sovrascritto da Firebase
         }
 
         function startApp() {
-    // --- NUOVO BLOCCO SINCRONIZZAZIONE GIORNO ---
-    db.collection("impostazioni").doc("generali").onSnapshot(doc => {
-        if (doc.exists) {
-            indiceGiorno = doc.data().indice_giorno || 0;
-            const labelGiorno = document.getElementById('label-giorno');
-            if (labelGiorno) labelGiorno.innerText = `GIORNO: ${GIORNI[indiceGiorno]} (Clicca qui)`;
-            
-            // Aggiorna la tabella se l'utente si trova nella sezione Tabellone
-            if (!document.getElementById('tab-tabellone').classList.contains('hidden')) {
-                renderTabellone();
-            }
+            db.collection("impostazioni").doc("generali").onSnapshot(doc => {
+                if (doc.exists) {
+                    indiceGiorno = doc.data().indice_giorno || 0;
+                    const labelGiorno = document.getElementById('label-giorno');
+                    if (labelGiorno) labelGiorno.innerText = `GIORNO: ${GIORNI[indiceGiorno]} (Clicca qui)`;
+                    
+                    if (!document.getElementById('tab-tabellone').classList.contains('hidden')) {
+                        renderTabellone();
+                    }
+                }
+            });
+
+            db.collection("squadre").orderBy("punti", "desc").onSnapshot(snap => {
+                const list = document.getElementById('classifica-list');
+                list.innerHTML = "";
+                
+                snap.forEach(doc => {
+                    const s = doc.data();
+                    list.innerHTML += `<div class="${colorClasses[s.colore] || 'bg-gray-500'} p-5 rounded-[2rem] flex justify-between items-center shadow-md card-anim"><span class="font-bold text-white uppercase tracking-tighter">${s.nome}</span><span class="text-3xl font-black text-white">${s.punti}</span></div>`;
+                });
+            });
+
+            db.collection("registro").orderBy("data", "desc").limit(10).onSnapshot(snap => {
+                const list = document.getElementById('registro-list');
+                list.innerHTML = "";
+                snap.forEach(doc => {
+                    const l = doc.data();
+                    list.innerHTML += `<div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-50 flex items-center justify-between card-anim"><div><span class="text-[9px] font-black text-gray-300 uppercase tracking-widest">${l.padrino}</span><br><span class="font-bold text-gray-800 text-sm italic">${l.bersaglio}</span><br><span class="text-[10px] text-gray-400 uppercase">${l.causale}</span></div><span class="${l.punti > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'} px-3 py-1.5 rounded-xl font-black text-xs">${l.punti > 0 ? '+' : ''}${l.punti}</span></div>`;
+                });
+            });
         }
-    });
-    // ---------------------------------------------
-
-    // --- CODICE ORIGINALE CLASSIFICA E REGISTRO ---[cite: 1]
-    db.collection("squadre").orderBy("punti", "desc").onSnapshot(snap => {
-        const list = document.getElementById('classifica-list');
-        list.innerHTML = "";
-        
-        snap.forEach(doc => {
-            const s = doc.data();
-            list.innerHTML += `<div class="${colorClasses[s.colore] || 'bg-gray-500'} p-5 rounded-[2rem] flex justify-between items-center shadow-md card-anim"><span class="font-bold text-white uppercase tracking-tighter">${s.nome}</span><span class="text-3xl font-black text-white">${s.punti}</span></div>`;
-        });
-    });
-
-    db.collection("registro").orderBy("data", "desc").limit(10).onSnapshot(snap => {
-        const list = document.getElementById('registro-list');
-        list.innerHTML = "";
-        snap.forEach(doc => {
-            const l = doc.data();
-            list.innerHTML += `<div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-50 flex items-center justify-between card-anim"><div><span class="text-[9px] font-black text-gray-300 uppercase tracking-widest">${l.padrino}</span><br><span class="font-bold text-gray-800 text-sm italic">${l.bersaglio}</span><br><span class="text-[10px] text-gray-400 uppercase">${l.causale}</span></div><span class="${l.punti > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'} px-3 py-1.5 rounded-xl font-black text-xs">${l.punti > 0 ? '+' : ''}${l.punti}</span></div>`;
-        });
-    });
-}
 
         async function renderTabellone() {
             const body = document.getElementById('tabellone-body');
@@ -228,7 +223,6 @@ let indiceGiorno = 0; // Il valore verrà sovrascritto da Firebase
             body.innerHTML = "<tr><td colspan='27' class='p-10 text-center animate-pulse text-gray-400'>Sincronizzazione dati in corso...</td></tr>";
 
             try {
-                // Modificato l'ordine: classifica decrescente per punti
                 const sqSnap = await db.collection("squadre").orderBy("punti", "desc").get();
                 const regSnap = await db.collection("registro").get();
                 const rgSnap = await db.collection("ragazzi").get();
@@ -265,16 +259,27 @@ let indiceGiorno = 0; // Il valore verrà sovrascritto da Firebase
                         const bersaglioLower = r.bersaglio.toLowerCase();
                         const nomeSqLower = nomeSq.toLowerCase();
 
-                        let idSquadraTrovato = null;
-                        for (let nomeRagazzo in mappaRagazzoSquadra) {
-                            if (bersaglioLower.includes(nomeRagazzo)) {
-                                idSquadraTrovato = mappaRagazzoSquadra[nomeRagazzo];
-                                break;
-                            }
-                        }
+                        let appartiene = false;
 
-                        const appartiene = (bersaglioLower === nomeSqLower) ||
-(bersaglioLower === sqId.toLowerCase()) || idSquadraTrovato === sqId || idSquadraTrovato === nomeSq;
+                        // Se il record ha l'idSquadra (il nuovo metodo infallibile)
+                        if (r.idSquadra) {
+                            appartiene = (String(r.idSquadra).trim() === sqId);
+                        } else {
+                            // Metodo di Fallback (corretto) per i vecchi log senza idSquadra
+                            let idSquadraTrovato = null;
+                            for (let nomeRagazzo in mappaRagazzoSquadra) {
+                                // Match ESATTO, o inclusione solo se è tra parentesi (per le camere)
+                                if (bersaglioLower === nomeRagazzo || bersaglioLower.includes(`(${nomeRagazzo})`)) {
+                                    idSquadraTrovato = mappaRagazzoSquadra[nomeRagazzo];
+                                    break;
+                                }
+                            }
+
+                            appartiene = (bersaglioLower === nomeSqLower) ||
+                                         (bersaglioLower === sqId.toLowerCase()) || 
+                                         idSquadraTrovato === sqId || 
+                                         idSquadraTrovato === nomeSq;
+                        }
                         
                         if (appartiene) {
                             const c = (r.causale || "").toUpperCase().trim();
@@ -355,12 +360,11 @@ let indiceGiorno = 0; // Il valore verrà sovrascritto da Firebase
         }
 
         function cambiaGiorno() {
-    let nuovoIndice = (indiceGiorno + 1) % GIORNI.length;
-    // Scrive il nuovo giorno su Firebase. '{ merge: true }' crea il documento se non esiste.
-    db.collection("impostazioni").doc("generali").set({
-        indice_giorno: nuovoIndice
-    }, { merge: true });
-}
+            let nuovoIndice = (indiceGiorno + 1) % GIORNI.length;
+            db.collection("impostazioni").doc("generali").set({
+                indice_giorno: nuovoIndice
+            }, { merge: true });
+        }
 
         async function renderSquadre() {
             const container = document.getElementById('squadre-list');
@@ -395,7 +399,6 @@ let indiceGiorno = 0; // Il valore verrà sovrascritto da Firebase
                 camere[r.camera].push({ id: doc.id, ...r }); 
             });
 
-            // Ordinamento Testuale
             Object.keys(camere).sort((a,b) => String(a).localeCompare(String(b))).forEach(num => {
                 let rHtml = "";
                 let searchData = "camera " + num; 
@@ -483,7 +486,6 @@ let indiceGiorno = 0; // Il valore verrà sovrascritto da Firebase
         }
 
         async function flussoPuntiCamera(numCamera) {
-            // Modifica Query: Camera cercata come Stringa
             const snap = await db.collection("ragazzi").where("camera", "==", String(numCamera)).get();
             let ragazzi = [];
             snap.forEach(doc => ragazzi.push({ id: doc.id, ...doc.data() }));
@@ -553,8 +555,14 @@ let indiceGiorno = 0; // Il valore verrà sovrascritto da Firebase
                     causaleFinale = tipoOperazione.toUpperCase();
                 }
 
+                // Salvataggio nel database con idSquadra incluso!
                 await db.collection("registro").add({
-                    padrino: CURRENT_USER, bersaglio: bersaglio, punti: punti, causale: causaleFinale, data: firebase.firestore.FieldValue.serverTimestamp()
+                    padrino: CURRENT_USER, 
+                    bersaglio: bersaglio, 
+                    punti: punti, 
+                    causale: causaleFinale, 
+                    data: firebase.firestore.FieldValue.serverTimestamp(),
+                    idSquadra: idSquadra
                 });
                 
                 if (punti > 0) confetti({ particleCount: 150, spread: 70, origin: { y: 0.7 } });
