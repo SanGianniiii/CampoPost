@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dettaglio Bonus/Malus</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; }
+        .card-anim { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .glass-header { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); }
+    </style>
+</head>
+<body class="pb-24">
+
+    <!-- Header -->
+    <header class="glass-header px-6 py-4 shadow-sm sticky top-0 z-40 flex flex-col items-center">
+        <h1 class="font-black text-2xl tracking-tighter text-gray-900 leading-none mb-4">DETTAGLIO <span class="text-indigo-600">BONUS/MALUS</span></h1>
+        
+        <!-- Selettore Giorno -->
+        <select id="select-giorno" onchange="filtraDati()" class="w-full max-w-md p-3 bg-white border-2 border-indigo-100 focus:border-indigo-500 rounded-2xl outline-none font-black text-gray-700 shadow-sm uppercase text-sm">
+            <option value="MERCOLEDÌ">Mercoledì</option>
+            <option value="GIOVEDÌ">Giovedì</option>
+            <option value="VENERDÌ">Venerdì</option>
+            <option value="SABATO">Sabato</option>
+            <option value="DOMENICA">Domenica</option>
+        </select>
+    </header>
+
+    <!-- Contenitore Risultati -->
+    <main id="risultati-container" class="p-4 mt-2 max-w-2xl mx-auto space-y-6">
+        <div class="text-center text-gray-400 font-bold p-10 animate-pulse">Caricamento dati in corso...</div>
+    </main>
+
+    <script>
+        // Configurazione Firebase originale[cite: 1]
+        const firebaseConfig = {
+            apiKey: "AIzaSyDYnV7Qqj_-iPLvE-KYXT1bCRbe_4seFaw",
+            authDomain: "campopostcresima2026.firebaseapp.com",
+            projectId: "campopostcresima2026",
+            storageBucket: "campopostcresima2026.firebasestorage.app",
+            messagingSenderId: "286625257910",
+            appId: "1:286625257910:web:734565f023794171e08917"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Variabili globali per salvare i dati
+        let datiSquadre = {};
+        let datiRegistro = [];
+        let mappaRagazzoSquadra = {}; // Per i log più vecchi senza idSquadra[cite: 1]
+
+        // Colori squadre per UI[cite: 1]
+        const colorClasses = { 
+            'azzurro': 'bg-sky-400', 'rosa': 'bg-pink-400', 'biancogrigio': 'bg-gray-300',
+            'colorcacca': 'bg-yellow-500', 'arancione': 'bg-orange-500', 'nero': 'bg-gray-900',
+            'blunotte': 'bg-blue-900', 'verde': 'bg-green-500', 'giallo': 'bg-yellow-300',
+            'marrone': 'bg-amber-700', 'rosso': 'bg-red-500', 'viola': 'bg-purple-500',
+            'fragola': 'bg-fuchsia-500', 'blu': 'bg-teal-400'
+        };
+
+        async function initData() {
+            try {
+                // 1. Fetch Squadre[cite: 1]
+                const sqSnap = await db.collection("squadre").get();
+                sqSnap.forEach(doc => {
+                    datiSquadre[doc.id.trim()] = {
+                        nome: doc.data().nome || "",
+                        colore: doc.data().colore || "biancogrigio"
+                    };
+                });
+
+                // 2. Fetch Ragazzi (necessario come fallback se manca idSquadra nel registro)[cite: 1]
+                const rgSnap = await db.collection("ragazzi").get();
+                rgSnap.forEach(doc => {
+                    const r = doc.data();
+                    if (r.nome && r.Idsquadra) {
+                        mappaRagazzoSquadra[r.nome.toLowerCase().trim()] = String(r.Idsquadra).trim();
+                    }
+                });
+
+                // 3. Fetch Registro Completo[cite: 1]
+                const regSnap = await db.collection("registro").get();
+                regSnap.forEach(doc => {
+                    datiRegistro.push(doc.data());
+                });
+
+                // Esegue il primo filtro
+                filtraDati();
+
+            } catch (error) {
+                console.error("Errore nel caricamento:", error);
+                document.getElementById('risultati-container').innerHTML = "<div class='text-center text-red-500 font-bold'>Errore nel caricamento dei dati.</div>";
+            }
+        }
+
+        function filtraDati() {
+            const container = document.getElementById('risultati-container');
+            const giornoSelezionato = document.getElementById('select-giorno').value.toUpperCase();
+            const giornoSenzaAccento = giornoSelezionato.replace('Ì', 'I');
+
+            // Inizializza l'oggetto per raggruppare i dati per ogni squadra
+            let risultatiPerSquadra = {};
+            for (let id in datiSquadre) {
+                risultatiPerSquadra[id] = {
+                    nome: datiSquadre[id].nome,
+                    colore: datiSquadre[id].colore,
+                    listaBonus: [],
+                    totaleBonus: 0,
+                    listaMalus: [],
+                    totaleMalus: 0
+                };
+            }
+
+            // Filtra e smista il registro
+            datiRegistro.forEach(r => {
+                if (!r.bersaglio || !r.causale) return;
+                
+                const c = r.causale.toUpperCase().trim();
+                const p = Number(r.punti) || 0;
+
+                // Controlla se è un log di tipo B/M per il giorno selezionato[cite: 1]
+                if (c.startsWith("B/M") && (c.includes(giornoSelezionato) || c.includes(giornoSenzaAccento))) {
+                    
+                    let idSquadraTrovato = null;
+
+                    // Logica di assegnazione alla squadra[cite: 1]
+                    if (r.idSquadra) {
+                        idSquadraTrovato = String(r.idSquadra).trim();
+                    } else {
+                        // Fallback per log vecchi[cite: 1]
+                        const bersaglioLower = r.bersaglio.toLowerCase();
+                        for (let nomeRagazzo in mappaRagazzoSquadra) {
+                            if (bersaglioLower === nomeRagazzo || bersaglioLower.includes(`(${nomeRagazzo})`)) {
+                                idSquadraTrovato = mappaRagazzoSquadra[nomeRagazzo];
+                                break;
+                            }
+                        }
+                        if (!idSquadraTrovato) {
+                            for (let id in datiSquadre) {
+                                if (datiSquadre[id].nome.toLowerCase() === bersaglioLower || id.toLowerCase() === bersaglioLower) {
+                                    idSquadraTrovato = id;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    // Se abbiamo identificato la squadra, separiamo bonus e malus
+                    if (idSquadraTrovato && risultatiPerSquadra[idSquadraTrovato]) {
+                        // Estraiamo la motivazione (quello che c'è tra parentesi, se esiste)
+                        let motivazione = c;
+                        const match = c.match(/\((.*?)\)/);
+                        if (match && match[1]) {
+                            motivazione = match[1];
+                        }
+
+                        const item = {
+                            bersaglio: r.bersaglio,
+                            motivazione: motivazione,
+                            punti: p,
+                            padrino: r.padrino || "Sconosciuto"
+                        };
+
+                        if (p > 0) {
+                            risultatiPerSquadra[idSquadraTrovato].listaBonus.push(item);
+                            risultatiPerSquadra[idSquadraTrovato].totaleBonus += p;
+                        } else if (p < 0) {
+                            risultatiPerSquadra[idSquadraTrovato].listaMalus.push(item);
+                            risultatiPerSquadra[idSquadraTrovato].totaleMalus += p; // P è già negativo
+                        }
+                    }
+                }
+            });
+
+            // Generazione dell'HTML
+            container.innerHTML = "";
+            
+            for (let id in risultatiPerSquadra) {
+                const sq = risultatiPerSquadra[id];
+                const bgClass = colorClasses[sq.colore] || 'bg-gray-800';
+                const totaleNetto = sq.totaleBonus + sq.totaleMalus;
+
+                // Creazione righe Bonus
+                let htmlBonus = "";
+                if (sq.listaBonus.length === 0) {
+                    htmlBonus = "<p class='text-xs text-gray-400 italic mb-2'>Nessun bonus</p>";
+                } else {
+                    sq.listaBonus.forEach(b => {
+                        htmlBonus += `
+                        <div class="flex justify-between items-center bg-emerald-50 p-2 rounded-lg mb-2 border border-emerald-100">
+                            <div class="flex flex-col">
+                                <span class="font-bold text-xs text-gray-800">${b.bersaglio}</span>
+                                <span class="text-[9px] text-gray-500 uppercase">${b.motivazione} (di ${b.padrino})</span>
+                            </div>
+                            <span class="font-black text-emerald-600 text-sm">+${b.punti}</span>
+                        </div>`;
+                    });
+                }
+
+                // Creazione righe Malus
+                let htmlMalus = "";
+                if (sq.listaMalus.length === 0) {
+                    htmlMalus = "<p class='text-xs text-gray-400 italic mb-2'>Nessun malus</p>";
+                } else {
+                    sq.listaMalus.forEach(m => {
+                        htmlMalus += `
+                        <div class="flex justify-between items-center bg-rose-50 p-2 rounded-lg mb-2 border border-rose-100">
+                            <div class="flex flex-col">
+                                <span class="font-bold text-xs text-gray-800">${m.bersaglio}</span>
+                                <span class="text-[9px] text-gray-500 uppercase">${m.motivazione} (di ${m.padrino})</span>
+                            </div>
+                            <span class="font-black text-rose-600 text-sm">${m.punti}</span>
+                        </div>`;
+                    });
+                }
+
+                // Costruisce la Card per la Squadra
+                container.innerHTML += `
+                <div class="bg-white rounded-[2rem] shadow-lg overflow-hidden border border-gray-100 card-anim">
+                    
+                    <!-- Intestazione Squadra -->
+                    <div class="${bgClass} p-4 flex justify-between items-center text-white">
+                        <h3 class="font-black text-xl uppercase tracking-tighter">${sq.nome}</h3>
+                        <div class="bg-white/20 px-4 py-1 rounded-full backdrop-blur-md">
+                            <span class="text-[10px] font-bold uppercase tracking-widest opacity-80">Totale Netto</span>
+                            <span class="ml-2 font-black text-lg">${totaleNetto > 0 ? '+'+totaleNetto : totaleNetto}</span>
+                        </div>
+                    </div>
+
+                    <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        
+                        <!-- Colonna Bonus -->
+                        <div>
+                            <div class="flex justify-between items-end mb-3 border-b border-gray-100 pb-2">
+                                <h4 class="text-xs font-black text-emerald-600 uppercase tracking-widest">⭐ Bonus Ricevuti</h4>
+                                <span class="font-black text-emerald-600 bg-emerald-100 px-2 py-1 rounded text-xs">Tot: +${sq.totaleBonus}</span>
+                            </div>
+                            <div>${htmlBonus}</div>
+                        </div>
+
+                        <!-- Colonna Malus -->
+                        <div>
+                            <div class="flex justify-between items-end mb-3 border-b border-gray-100 pb-2">
+                                <h4 class="text-xs font-black text-rose-600 uppercase tracking-widest">🚨 Malus Ricevuti</h4>
+                                <span class="font-black text-rose-600 bg-rose-100 px-2 py-1 rounded text-xs">Tot: ${sq.totaleMalus}</span>
+                            </div>
+                            <div>${htmlMalus}</div>
+                        </div>
+
+                    </div>
+                </div>`;
+            }
+        }
+
+        // Avvio Script
+        initData();
+    </script>
+</body>
+</html>
